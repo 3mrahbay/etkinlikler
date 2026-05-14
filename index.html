@@ -8,7 +8,6 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
@@ -24,7 +23,7 @@
 <script>
 // Firebase Init
 firebase.initializeApp({apiKey:"AIzaSyARlqAoh-HRBC9xPwj7qRgG-IuZFSH39Uc",authDomain:"bcka-site.firebaseapp.com",projectId:"bcka-site",storageBucket:"bcka-site.firebasestorage.app",messagingSenderId:"736581475783",appId:"1:736581475783:web:5729a05ed4d05f1d1d0de2"});
-var fbAuth=firebase.auth(),fbDb=firebase.firestore(),fbStorage=firebase.storage(),fbGoogleProvider=new firebase.auth.GoogleAuthProvider();
+var fbAuth=firebase.auth(),fbDb=firebase.firestore(),fbGoogleProvider=new firebase.auth.GoogleAuthProvider();
 
 // Firestore CRUD
 function fsLoad(c){return fbDb.collection(c).get().then(function(s){return s.docs.map(function(d){var o=d.data();o._docId=d.id;return o})}).catch(function(){return[]})}
@@ -32,8 +31,32 @@ function fsSave(c,id,d){return fbDb.collection(c).doc(id).set(d,{merge:true}).ca
 function fsDelete(c,id){return fbDb.collection(c).doc(id).delete().catch(function(e){console.error(e)})}
 function fsAdd(c,d){return fbDb.collection(c).add(d).then(function(r){return r.id}).catch(function(){return null})}
 
-// Firebase Storage upload
-function fbUploadImage(file,path){var ref=fbStorage.ref(path);return ref.put(file).then(function(){return ref.getDownloadURL()}).catch(function(){return null})}
+// Bunny.net Upload (config Firestore config/bunny'den okunur)
+var bunnyConfig=null;
+function getBunnyConfig(){
+  if(bunnyConfig)return Promise.resolve(bunnyConfig);
+  return fbDb.collection("config").doc("bunny").get().then(function(d){
+    if(d.exists){bunnyConfig=d.data();return bunnyConfig}
+    return null;
+  }).catch(function(){return null});
+}
+function bunnyUpload(file,folder){
+  return getBunnyConfig().then(function(cfg){
+    if(!cfg||!cfg.storagePassword||!cfg.storageZone)throw new Error("Bunny config eksik");
+    var fileName=Date.now()+"_"+file.name.replace(/[^a-zA-Z0-9._-]/g,"_");
+    var path=folder+"/"+fileName;
+    var endpoint="https://storage.bunnycdn.com/"+cfg.storageZone+"/"+path;
+    return fetch(endpoint,{
+      method:"PUT",
+      headers:{"AccessKey":cfg.storagePassword,"Content-Type":"application/octet-stream"},
+      body:file
+    }).then(function(r){
+      if(!r.ok)throw new Error("Upload failed: "+r.status);
+      var cdnBase=cfg.cdnUrl||("https://"+cfg.storageZone+".b-cdn.net");
+      return cdnBase+"/"+path;
+    });
+  });
+}
 
 // Brevo Mail
 var BREVO_URL="https://script.google.com/macros/s/AKfycbwUNvVhTCvxUKOMtbFJ4_UASBo8-sgT13qT_9tWeYKZR3IYaYKUhGdSaGgGaaqMaZLf/exec";
@@ -53,8 +76,7 @@ function ImageUploader({images,setImages}){
     setUploading(true);
     for(const file of files){
       if(file.size>5*1024*1024){alert(file.name+" 5MB üzeri!");continue}
-      const path="etkinlikler/"+Date.now()+"_"+file.name;
-      const url=await fbUploadImage(file,path);
+      const url=await bunnyUpload(file,"etkinlikler").catch(e=>{console.error("Bunny upload:",e);return null});
       if(url)setImages(prev=>[...prev,url]);
     }
     setUploading(false);if(fileRef.current)fileRef.current.value="";
@@ -361,7 +383,7 @@ return(<div><h2 style={{fontFamily:ffT,color:"#1b3a26",margin:"0 0 20px",fontSiz
 
 const emptyEv=()=>({id:"",title:"",type:"atolye",status:"draft",date:"",startTime:"10:00",endTime:"12:00",location:"Bir Çiçek Koleji Anaokulu, Tuzla",mapUrl:"https://maps.google.com/?q=Bir+Çiçek+Koleji+Tuzla",images:[],youtubeUrl:"",shortDesc:"",fullDesc:"",capacity:20,ageRange:"3-6 yaş",isFree:true,fee:0});
 
-function EvForm({event,onSave,onCancel}){const[fm,setFm]=useState(event||emptyEv());const[imgIn,setImgIn]=useState("");const f=(k,v)=>setFm({...fm,[k]:v});const addImg=()=>{if(imgIn.trim()){f("images",[...fm.images,imgIn.trim()]);setImgIn("")}};const rmImg=(i)=>f("images",fm.images.filter((_,j)=>j!==i));const save=()=>{if(!fm.title||!fm.date)return alert("Başlık ve tarih zorunludur!");onSave({...fm,id:fm.id||genId("evt-")})};const ytId=fm.youtubeUrl?.match(/(?:v=|\/)([\w-]{11})/)?.[1];
+function EvForm({event,onSave,onCancel}){const[fm,setFm]=useState(event||emptyEv());const f=(k,v)=>setFm({...fm,[k]:v});const setImages=(fn)=>{const r=typeof fn==="function"?fn(fm.images):fn;setFm(prev=>({...prev,images:r}))};const save=async()=>{if(!fm.title||!fm.date)return alert("Başlık ve tarih zorunludur!");const id=fm.id||genId("evt-");const data={...fm,id};delete data._docId;await fsSave("etkinlikler",id,data);onSave(data)};const ytId=fm.youtubeUrl?.match(/(?:v=|\/)([\w-]{11})/)?.[1];
 return(<div style={crd}><h3 style={{fontFamily:ffT,color:G,margin:"0 0 16px",fontSize:18}}>{event?"✏️ Düzenle":"➕ Yeni Etkinlik"}</h3><div style={{display:"grid",gap:14}}>
 <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:12}}><div><label style={lbl}>Başlık *</label><input style={inp(false)} value={fm.title} onChange={e=>f("title",e.target.value)}/></div><div><label style={lbl}>Tür</label><select style={{...inp(false),appearance:"auto"}} value={fm.type} onChange={e=>f("type",e.target.value)}>{Object.entries(TL).map(([k,v])=><option key={k} value={k}>{v.icon} {v.label}</option>)}</select></div></div>
 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:12}}><div><label style={lbl}>Tarih *</label><input type="date" style={inp(false)} value={fm.date} onChange={e=>f("date",e.target.value)}/></div><div><label style={lbl}>Başlangıç</label><input type="time" style={inp(false)} value={fm.startTime} onChange={e=>f("startTime",e.target.value)}/></div><div><label style={lbl}>Bitiş</label><input type="time" style={inp(false)} value={fm.endTime} onChange={e=>f("endTime",e.target.value)}/></div><div><label style={lbl}>Durum</label><select style={{...inp(false),appearance:"auto"}} value={fm.status} onChange={e=>f("status",e.target.value)}>{Object.entries(SM).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}</select></div></div>
@@ -370,7 +392,7 @@ return(<div style={crd}><h3 style={{fontFamily:ffT,color:G,margin:"0 0 16px",fon
 <div style={{background:"#f9fcf9",borderRadius:10,padding:14,border:"1px solid #dce8dc"}}><label style={lbl}>💰 Ücret</label><div style={{display:"flex",alignItems:"center",gap:14,marginTop:6}}><label style={{display:"flex",alignItems:"center",gap:6,fontFamily:ff,fontSize:13,cursor:"pointer"}}><input type="radio" checked={fm.isFree} onChange={()=>f("isFree",true)} style={{accentColor:G}}/> Ücretsiz</label><label style={{display:"flex",alignItems:"center",gap:6,fontFamily:ff,fontSize:13,cursor:"pointer"}}><input type="radio" checked={!fm.isFree} onChange={()=>f("isFree",false)} style={{accentColor:G}}/> Ücretli</label>{!fm.isFree&&<div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontFamily:ff,fontWeight:700,color:"#888"}}>₺</span><input type="number" style={{...inp(false),width:100}} value={fm.fee} onChange={e=>f("fee",+e.target.value)}/></div>}</div></div>
 <div><label style={lbl}>Kısa Açıklama</label><textarea style={{...inp(false),minHeight:60,resize:"vertical"}} value={fm.shortDesc} onChange={e=>f("shortDesc",e.target.value)}/></div>
 <div><label style={lbl}>Detaylı Açıklama</label><textarea style={{...inp(false),minHeight:100,resize:"vertical"}} value={fm.fullDesc} onChange={e=>f("fullDesc",e.target.value)}/></div>
-<div style={{background:"#f9fcf9",borderRadius:10,padding:14,border:"1px solid #dce8dc"}}><label style={lbl}>📸 Görseller (URL)</label><div style={{display:"flex",gap:8,marginBottom:10}}><input style={{...inp(false),flex:1}} value={imgIn} onChange={e=>setImgIn(e.target.value)} placeholder="https://... URL yapıştırın" onKeyDown={e=>e.key==="Enter"&&addImg()}/><button onClick={addImg} style={{...btnP,fontSize:12,padding:"8px 16px"}}>+</button></div>{fm.images.length>0&&<div style={{display:"flex",gap:8,flexWrap:"wrap"}}>{fm.images.map((img,i)=>(<div key={i} style={{position:"relative",width:80,height:56,borderRadius:8,overflow:"hidden",border:"2px solid #dce8dc"}}><img src={img} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/><button onClick={()=>rmImg(i)} style={{position:"absolute",top:1,right:1,width:16,height:16,borderRadius:"50%",background:"#e53935",color:"#fff",border:"none",fontSize:9,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button></div>))}</div>}</div>
+<ImageUploader images={fm.images} setImages={setImages}/>
 <div><label style={lbl}>🎬 YouTube</label><input style={inp(false)} value={fm.youtubeUrl} onChange={e=>f("youtubeUrl",e.target.value)} placeholder="https://youtube.com/watch?v=..."/>{ytId&&<div style={{marginTop:8,borderRadius:8,overflow:"hidden",aspectRatio:"16/9",maxWidth:300}}><iframe src={`https://www.youtube.com/embed/${ytId}`} style={{width:"100%",height:"100%",border:"none"}} allowFullScreen/></div>}</div>
 <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}><button onClick={onCancel} style={btnS}>İptal</button><button onClick={save} style={btnP}>{event?"💾 Güncelle":"🌿 Oluştur"}</button></div></div></div>)}
 
@@ -406,8 +428,8 @@ function App(){
   const[view,setView]=useState("public");
   
   const[ap,setAp]=useState("dash");
-  const[events,setEvents]=useState(SE);
-  const[regs,setRegs]=useState(SR);
+  const[events,setEvents]=useState([]);
+  const[regs,setRegs]=useState([]);
   const[profile,setProfile]=useState(null);
   const[showProfile,setShowProfile]=useState(false);
   const[settings,setSettings]=useState(DEFAULT_SETTINGS);
