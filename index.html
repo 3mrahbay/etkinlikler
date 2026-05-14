@@ -8,6 +8,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
@@ -23,7 +24,7 @@
 <script>
 // Firebase Init
 firebase.initializeApp({apiKey:"AIzaSyARlqAoh-HRBC9xPwj7qRgG-IuZFSH39Uc",authDomain:"bcka-site.firebaseapp.com",projectId:"bcka-site",storageBucket:"bcka-site.firebasestorage.app",messagingSenderId:"736581475783",appId:"1:736581475783:web:5729a05ed4d05f1d1d0de2"});
-var fbAuth=firebase.auth(),fbDb=firebase.firestore(),fbGoogleProvider=new firebase.auth.GoogleAuthProvider();
+var fbAuth=firebase.auth(),fbDb=firebase.firestore(),fbStorage=firebase.storage(),fbGoogleProvider=new firebase.auth.GoogleAuthProvider();
 
 // Firestore CRUD
 function fsLoad(c){return fbDb.collection(c).get().then(function(s){return s.docs.map(function(d){var o=d.data();o._docId=d.id;return o})}).catch(function(){return[]})}
@@ -76,7 +77,8 @@ function ImageUploader({images,setImages}){
     setUploading(true);
     for(const file of files){
       if(file.size>5*1024*1024){alert(file.name+" 5MB üzeri!");continue}
-      const url=await bunnyUpload(file,"etkinlikler").catch(e=>{console.error("Bunny upload:",e);return null});
+      const path="etkinlikler/"+Date.now()+"_"+file.name;
+      const url=await fbUploadImage(file,path);
       if(url)setImages(prev=>[...prev,url]);
     }
     setUploading(false);if(fileRef.current)fileRef.current.value="";
@@ -188,6 +190,26 @@ function ProfilePage({user,profile,setProfile,events,regs,onClose}){
 const ADMIN_EMAIL="emrahby@gmail.com";
 const SCHOOL_EMAIL="eposta@bircicekkoleji.com";
 
+/* ═══ SUBSCRIBE FORM ═══ */
+function SubscribeForm(){
+  const[email,setEmail]=useState("");const[name,setName]=useState("");const[status,setStatus]=useState("");
+  const submit=async()=>{
+    if(!email||!email.includes("@"))return setStatus("error");
+    try{
+      await fsSave("etkinlik_aboneler",email,{email,name:name||"",subscribedAt:new Date().toISOString(),active:true});
+      setStatus("ok");setEmail("");setName("");
+      setTimeout(()=>setStatus(""),3000);
+    }catch(e){setStatus("error")}
+  };
+  if(status==="ok")return<div style={{background:"rgba(255,255,255,0.15)",borderRadius:12,padding:"14px 20px",maxWidth:420,margin:"0 auto"}}><span style={{fontFamily:ff,fontWeight:700,color:"#fff",fontSize:14}}>✅ Abone oldunuz! Yeni etkinliklerde bilgilendirileceksiniz.</span></div>;
+  return(<div style={{maxWidth:420,margin:"0 auto",display:"flex",gap:8,flexWrap:"wrap",justifyContent:"center"}}>
+    <input value={name} onChange={e=>setName(e.target.value)} placeholder="Adınız" style={{padding:"10px 14px",borderRadius:10,border:"2px solid rgba(255,255,255,0.3)",background:"rgba(255,255,255,0.1)",color:"#fff",fontFamily:ff,fontSize:13,outline:"none",flex:"1 1 120px",boxSizing:"border-box","::placeholder":{color:"rgba(255,255,255,0.5)"}}}/>
+    <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="E-posta adresiniz" type="email" style={{padding:"10px 14px",borderRadius:10,border:status==="error"?"2px solid #ef5350":"2px solid rgba(255,255,255,0.3)",background:"rgba(255,255,255,0.1)",color:"#fff",fontFamily:ff,fontSize:13,outline:"none",flex:"2 1 180px",boxSizing:"border-box"}}/>
+    <button onClick={submit} style={{padding:"10px 20px",background:"#fff",color:"#1b5e20",border:"none",borderRadius:10,fontFamily:ff,fontWeight:800,fontSize:13,cursor:"pointer",whiteSpace:"nowrap"}}>Abone Ol</button>
+  </div>)}
+
+
+
 const IBAN_INFO={
   bankName:"Banka Adı (Admin panelinden güncelleyin)",
   accountHolder:"Bir Çiçek Koleji Anaokulu",
@@ -278,9 +300,9 @@ function Countdown({date}){const t=useCountdown(date);if(t.expired)return<span s
 /* ═══ ADMIN LOGIN ═══ */
 
 /* ═══ PUBLIC CARD ═══ */
-function PubCard({ev,regs,onReg,onDet}){const tp=TL[ev.type]||TL.gezi;const rc=regs.filter(r=>r.eventId===ev.id).length;const pct=Math.round((rc/ev.capacity)*100);const d=new Date(ev.date);const img=ev.images?.[0]||"https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=600&h=400&fit=crop";
-return(<div style={{background:"#fff",borderRadius:16,overflow:"hidden",boxShadow:"0 4px 24px rgba(46,83,57,0.10)",display:"flex",flexDirection:"column",transition:"transform 0.3s"}} onMouseEnter={e=>e.currentTarget.style.transform="translateY(-4px)"} onMouseLeave={e=>e.currentTarget.style.transform=""}>
-<div style={{position:"relative",height:190,overflow:"hidden"}}><img src={img} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/><div style={{position:"absolute",top:10,left:10,background:tp.bg,color:tp.color,padding:"3px 10px",borderRadius:16,fontSize:11,fontWeight:700,fontFamily:ff}}>{tp.icon} {tp.label}</div><div style={{position:"absolute",top:10,right:10,background:"#fff",borderRadius:8,padding:"5px 8px",textAlign:"center",boxShadow:"0 2px 8px rgba(0,0,0,0.12)"}}><div style={{fontSize:18,fontWeight:800,color:G,lineHeight:1,fontFamily:ffT}}>{d.getDate()}</div><div style={{fontSize:9,fontWeight:700,color:"#666",letterSpacing:1}}>{d.toLocaleDateString("tr-TR",{month:"short"}).toUpperCase()}</div></div>{!ev.isFree&&<div style={{position:"absolute",bottom:10,right:10,background:"#ff6f00",color:"#fff",padding:"3px 10px",borderRadius:16,fontSize:11,fontWeight:700,fontFamily:ff}}>₺{ev.fee}</div>}<div style={{position:"absolute",bottom:0,left:0,right:0,background:"linear-gradient(transparent,rgba(0,0,0,0.5))",padding:"20px 12px 8px"}}><Countdown date={ev.date+"T"+ev.startTime}/></div></div>
+function PubCard({ev,regs,onReg,onDet,isVeli}){const tp=TL[ev.type]||TL.gezi;const rc=regs.filter(r=>r.eventId===ev.id).length;const pct=Math.round((rc/ev.capacity)*100);const d=new Date(ev.date);const img=ev.images?.[0]||"https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=600&h=400&fit=crop";
+return(<div style={{background:"#fff",borderRadius:16,overflow:"hidden",boxShadow:"0 4px 24px rgba(46,83,57,0.10)",display:"flex",flexDirection:"column",transition:"transform 0.3s",border:isVeli?"2px solid #4a7c59":"none"}} onMouseEnter={e=>e.currentTarget.style.transform="translateY(-4px)"} onMouseLeave={e=>e.currentTarget.style.transform=""}>
+<div style={{position:"relative",height:190,overflow:"hidden"}}><img src={img} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/><div style={{position:"absolute",top:10,left:10,background:tp.bg,color:tp.color,padding:"3px 10px",borderRadius:16,fontSize:11,fontWeight:700,fontFamily:ff}}>{tp.icon} {tp.label}</div><div style={{position:"absolute",top:10,right:10,background:"#fff",borderRadius:8,padding:"5px 8px",textAlign:"center",boxShadow:"0 2px 8px rgba(0,0,0,0.12)"}}><div style={{fontSize:18,fontWeight:800,color:G,lineHeight:1,fontFamily:ffT}}>{d.getDate()}</div><div style={{fontSize:9,fontWeight:700,color:"#666",letterSpacing:1}}>{d.toLocaleDateString("tr-TR",{month:"short"}).toUpperCase()}</div></div>{!ev.isFree&&<div style={{position:"absolute",bottom:10,right:10,background:"#ff6f00",color:"#fff",padding:"3px 10px",borderRadius:16,fontSize:11,fontWeight:700,fontFamily:ff}}>₺{ev.fee}</div>}{isVeli&&<div style={{position:"absolute",top:42,left:10,background:"#2e5339",color:"#fff",padding:"2px 8px",borderRadius:12,fontSize:9,fontWeight:700,fontFamily:ff}}>🌿 Velilere Öncelikli</div>}<div style={{position:"absolute",bottom:0,left:0,right:0,background:"linear-gradient(transparent,rgba(0,0,0,0.5))",padding:"20px 12px 8px"}}><Countdown date={ev.date+"T"+ev.startTime}/></div></div>
 <div style={{padding:"14px 16px",flex:1,display:"flex",flexDirection:"column"}}><h3 style={{margin:"0 0 6px",fontSize:16,fontWeight:800,color:"#1b3a26",fontFamily:ffT,lineHeight:1.3}}>{ev.title}</h3><div style={{display:"flex",gap:10,marginBottom:8,fontSize:11,color:"#666",fontFamily:ff,flexWrap:"wrap"}}><span>🕐 {ev.startTime}</span><span>👶 {ev.ageRange}</span><span style={{color:GL,fontWeight:700}}>{ev.isFree?"Ücretsiz":`₺${ev.fee}`}</span>{ev.mapUrl&&<a href={ev.mapUrl} target="_blank" rel="noopener noreferrer" style={{color:"#1565c0",fontWeight:700,textDecoration:"none"}}>📍 Konum</a>}</div>
 <p style={{margin:"0 0 12px",fontSize:13,color:"#555",lineHeight:1.6,fontFamily:ff,flex:1}}>{ev.shortDesc}</p>
 <div style={{marginBottom:12}}><div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:"#888",marginBottom:3,fontFamily:ff}}><span>{rc}/{ev.capacity}</span><span>%{Math.min(pct,100)}</span></div><div style={{height:5,background:"#e8f0e8",borderRadius:3,overflow:"hidden"}}><div style={{height:"100%",borderRadius:3,background:pct>80?"#e65100":`linear-gradient(90deg,${GL},#6ba368)`,width:`${Math.min(pct,100)}%`}}/></div></div>
@@ -369,7 +391,7 @@ return(<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",displa
 
 /* ═══ ADMIN COMPONENTS ═══ */
 function Sidebar({active,setActive,onOut}){
-const items=[{k:"dash",i:"📊",l:"Gösterge Paneli"},{k:"events",i:"📅",l:"Etkinlik Yönetimi"},{k:"regs",i:"👥",l:"Kayıt Raporları"},{k:"kids",i:"👶",l:"Çocuk Raporu"},{k:"settings",i:"⚙️",l:"Site Ayarları"}];
+const items=[{k:"dash",i:"📊",l:"Gösterge Paneli"},{k:"events",i:"📅",l:"Etkinlik Yönetimi"},{k:"regs",i:"👥",l:"Kayıt Raporları"},{k:"kids",i:"👶",l:"Çocuk Raporu"},{k:"subs",i:"📬",l:"Aboneler"},{k:"settings",i:"⚙️",l:"Site Ayarları"}];
 return(<div style={{width:220,background:`linear-gradient(180deg,${G},#1a2e21)`,minHeight:"100vh",padding:"20px 0",flexShrink:0,display:"flex",flexDirection:"column"}}>
 <div style={{padding:"0 16px 20px",borderBottom:"1px solid rgba(255,255,255,0.1)",display:"flex",alignItems:"center",gap:10}}><img src={LOGO} alt="" style={{width:40,height:40,borderRadius:"50%",border:"2px solid rgba(255,255,255,0.2)"}}/><div><div style={{fontSize:10,color:"rgba(255,255,255,0.5)",fontFamily:ff,fontWeight:700,letterSpacing:1}}>BİR ÇİÇEK KOLEJİ</div><div style={{fontSize:14,color:"#fff",fontFamily:ffT,fontWeight:800}}>Admin Panel</div></div></div>
 <div style={{flex:1,padding:"12px 8px"}}>{items.map(it=>(<button key={it.k} onClick={()=>setActive(it.k)} style={{display:"flex",alignItems:"center",gap:10,width:"100%",padding:"10px 12px",marginBottom:4,borderRadius:10,border:"none",background:active===it.k?"rgba(255,255,255,0.15)":"transparent",color:active===it.k?"#fff":"rgba(255,255,255,0.6)",fontFamily:ff,fontWeight:700,fontSize:13,cursor:"pointer",textAlign:"left"}}><span style={{fontSize:16}}>{it.i}</span>{it.l}</button>))}</div>
@@ -413,6 +435,63 @@ return(<div><div style={{display:"flex",justifyContent:"space-between",alignItem
 <div style={{...crd,padding:"10px 14px",marginBottom:16,display:"flex",gap:20}}><span style={{fontFamily:ff,fontSize:13}}>Toplam: <strong style={{color:G}}>{all.length}</strong></span><span style={{fontFamily:ff,fontSize:13}}>Kız: <strong>{all.filter(c=>c.gender==="kiz").length}</strong></span><span style={{fontFamily:ff,fontSize:13}}>Erkek: <strong>{all.filter(c=>c.gender==="erkek").length}</strong></span></div>
 <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontFamily:ff,fontSize:12}}><thead><tr style={{background:G,color:"#fff"}}>{["Etkinlik","Çocuk","Yaş","Cinsiyet","Okul","Özel","Ebeveyn","Tel"].map(h=><th key={h} style={{padding:"8px 10px",textAlign:"left",fontWeight:700,fontSize:11}}>{h}</th>)}</tr></thead><tbody>{all.map((c,i)=>(<tr key={i} style={{background:i%2?"#f9fcf9":"#fff",borderBottom:"1px solid #e8f0e8"}}><td style={{padding:"8px 10px",fontWeight:700,color:G,maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.evN}</td><td style={{padding:"8px 10px",fontWeight:700}}>{c.name} {c.surname}</td><td style={{padding:"8px 10px",textAlign:"center"}}>{c.age}</td><td style={{padding:"8px 10px"}}>{c.gender==="kiz"?"👧":"👦"}</td><td style={{padding:"8px 10px"}}>{c.currentSchool||"—"}</td><td style={{padding:"8px 10px",color:c.specialNeeds?"#e65100":"#ccc"}}>{c.specialNeeds||"—"}</td><td style={{padding:"8px 10px"}}>{c.pN}</td><td style={{padding:"8px 10px"}}>{c.pP}</td></tr>))}</tbody></table></div></div>)}
 
+/* ═══ ADMIN: ABONELER + BİLDİRİM ═══ */
+function SubsPage({events}){
+  const[subs,setSubs]=useState([]);const[loading,setLoading]=useState(true);const[sending,setSending]=useState(false);const[sent,setSent]=useState("");const[selEvent,setSelEvent]=useState("");
+  useEffect(()=>{fsLoad("etkinlik_aboneler").then(s=>{setSubs(s.filter(x=>x.active!==false));setLoading(false)})},[]);
+
+  const sendNotification=async()=>{
+    if(!selEvent)return alert("Etkinlik seçin!");
+    const ev=events.find(e=>e.id===selEvent);if(!ev)return;
+    const activeSubs=subs.filter(s=>s.active!==false&&s.email);
+    if(!activeSubs.length)return alert("Aktif abone yok!");
+    if(!confirm(`${activeSubs.length} aboneye "${ev.title}" bildirimi gönderilsin mi?`))return;
+    setSending(true);
+    let ok=0;
+    for(const sub of activeSubs){
+      const html=`<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto"><div style="background:linear-gradient(135deg,#2e5339,#4a7c59);padding:24px;text-align:center;border-radius:12px 12px 0 0"><h1 style="color:white;margin:0;font-size:20px">🌿 Yeni Etkinlik!</h1></div><div style="background:white;padding:24px;border:1px solid #e0e0e0"><h2 style="color:#2e5339;margin:0 0 12px">${ev.title}</h2><p style="color:#555;font-size:14px;line-height:1.7">${ev.shortDesc}</p><div style="background:#f1f8f1;border-radius:10px;padding:14px;margin:16px 0;border-left:4px solid #2e5339"><table style="width:100%;font-size:13px;color:#444"><tr><td style="padding:4px 0;font-weight:bold;width:80px">Tarih:</td><td>${fmtDate(ev.date)}</td></tr><tr><td style="padding:4px 0;font-weight:bold">Saat:</td><td>${ev.startTime}-${ev.endTime}</td></tr><tr><td style="padding:4px 0;font-weight:bold">Konum:</td><td>${ev.location}</td></tr><tr><td style="padding:4px 0;font-weight:bold">Yaş:</td><td>${ev.ageRange}</td></tr><tr><td style="padding:4px 0;font-weight:bold">Ücret:</td><td>${ev.isFree?"Ücretsiz":"₺"+ev.fee}</td></tr></table></div><p style="text-align:center;margin:20px 0"><a href="https://etkinlikler.bircicekkoleji.com" style="background:linear-gradient(135deg,#2e5339,#4a7c59);color:white;padding:12px 28px;border-radius:10px;text-decoration:none;font-weight:bold;font-size:15px">Detaylar ve Kayıt</a></p></div><div style="background:#2e5339;padding:12px;text-align:center;border-radius:0 0 12px 12px"><p style="color:rgba(255,255,255,0.5);font-size:10px;margin:0">Bir Çiçek Koleji Anaokulu | etkinlikler.bircicekkoleji.com</p></div></div>`;
+      brevoMail(sub.email,sub.name||"",ev.title+" — Yeni Etkinlik | Bir Çiçek Koleji",html,"eposta@bircicekkoleji.com");
+      ok++;
+      await new Promise(r=>setTimeout(r,300));
+    }
+    setSending(false);setSent(`✅ ${ok} aboneye bildirim gönderildi!`);setTimeout(()=>setSent(""),4000);
+  };
+
+  const removeSub=async(email)=>{if(!confirm(email+" silinsin mi?"))return;await fsDelete("etkinlik_aboneler",email);setSubs(subs.filter(s=>s.email!==email))};
+  const csv=()=>{const h="Ad,E-posta,Tarih\n";const rows=subs.map(s=>`"${s.name||""}","${s.email}","${s.subscribedAt?new Date(s.subscribedAt).toLocaleDateString("tr-TR"):""}"`).join("\n");const b=new Blob(["\uFEFF"+h+rows],{type:"text/csv;charset=utf-8;"});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="aboneler.csv";a.click()};
+
+  return(<div>
+    <h2 style={{fontFamily:ffT,color:"#1b3a26",margin:"0 0 16px",fontSize:22}}>📬 Aboneler ({subs.length})</h2>
+
+    {/* Bildirim Gönder */}
+    <div style={{...crd,background:"linear-gradient(135deg, #e8f5e9, #f1f8f1)",border:"2px solid #a5d6a7"}}>
+      <h3 style={{fontFamily:ff,fontWeight:800,color:G,fontSize:14,margin:"0 0 10px"}}>📢 Etkinlik Bildirimi Gönder</h3>
+      <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
+        <select style={{...inp(false),width:"auto",minWidth:220,appearance:"auto"}} value={selEvent} onChange={e=>setSelEvent(e.target.value)}>
+          <option value="">Etkinlik seçin...</option>
+          {events.filter(e=>e.status==="published").map(ev=><option key={ev.id} value={ev.id}>{ev.title} ({fmtDate(ev.date)})</option>)}
+        </select>
+        <button onClick={sendNotification} disabled={sending||!selEvent} style={{...btnP,fontSize:13,opacity:sending?0.6:1}}>{sending?"⏳ Gönderiliyor...":"📢 Tüm Abonelere Gönder"}</button>
+        {sent&&<span style={{fontFamily:ff,fontSize:13,color:"#2e7d32",fontWeight:700}}>{sent}</span>}
+      </div>
+      <p style={{fontFamily:ff,fontSize:11,color:"#666",marginTop:8}}>Seçilen etkinliğin detayları {subs.length} aktif aboneye e-posta ile gönderilecek.</p>
+    </div>
+
+    {/* Abone Listesi */}
+    <div style={{display:"flex",justifyContent:"flex-end",marginBottom:10}}><button onClick={csv} style={{...btnP,fontSize:11,padding:"6px 14px"}}>📥 CSV</button></div>
+    {loading?<div style={{textAlign:"center",padding:30}}><div className="spinner"/></div>:
+    <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontFamily:ff,fontSize:12}}>
+      <thead><tr style={{background:G,color:"#fff"}}><th style={{padding:"8px 10px",textAlign:"left",fontWeight:700,fontSize:11}}>Ad</th><th style={{padding:"8px 10px",textAlign:"left",fontWeight:700,fontSize:11}}>E-posta</th><th style={{padding:"8px 10px",textAlign:"left",fontWeight:700,fontSize:11}}>Tarih</th><th style={{padding:"8px 10px",width:60}}></th></tr></thead>
+      <tbody>{subs.map((s,i)=>(<tr key={s.email} style={{background:i%2?"#f9fcf9":"#fff",borderBottom:"1px solid #e8f0e8"}}>
+        <td style={{padding:"6px 10px",fontWeight:700}}>{s.name||"—"}</td>
+        <td style={{padding:"6px 10px"}}>{s.email}</td>
+        <td style={{padding:"6px 10px"}}>{s.subscribedAt?new Date(s.subscribedAt).toLocaleDateString("tr-TR"):"—"}</td>
+        <td style={{padding:"6px 10px"}}><button onClick={()=>removeSub(s.email)} style={{background:"#ffebee",border:"none",borderRadius:6,padding:"3px 8px",color:"#c62828",fontSize:10,fontWeight:700,cursor:"pointer"}}>🗑️</button></td>
+      </tr>))}</tbody>
+    </table></div>}
+    {!loading&&!subs.length&&<div style={{textAlign:"center",padding:30,color:"#999",fontFamily:ff}}>Henüz abone yok.</div>}
+  </div>)}
+
 function SettingsPage({settings,setSettings}){const[fm,setFm]=useState({...settings});const[saved,setSaved]=useState(false);const f=(k,v)=>{setFm({...fm,[k]:v});setSaved(false)};const save=async()=>{setSettings({...fm});await fsSave("etkinlik_ayarlar","main",fm);setSaved(true);setTimeout(()=>setSaved(false),2000)};
 return(<div><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}><h2 style={{fontFamily:ffT,color:"#1b3a26",margin:0,fontSize:24}}>⚙️ Ayarlar</h2><div style={{display:"flex",gap:8}}>{saved&&<span style={{fontFamily:ff,fontSize:13,color:"#2e7d32",fontWeight:700,alignSelf:"center"}}>✅ Kaydedildi!</span>}<button onClick={save} style={{...btnP,fontSize:13}}>💾 Kaydet</button></div></div>
 <div style={{display:"grid",gap:16}}>
@@ -454,6 +533,8 @@ function App(){
   const S=settings;
 
   const isAdmin=fbUser&&fbUser.email===ADMIN_EMAIL;
+  const[isVeli,setIsVeli]=useState(false);
+  useEffect(()=>{if(!fbUser){setIsVeli(false);return}fbDb.collection("veliler").doc(fbUser.email).get().then(d=>{setIsVeli(d.exists&&d.data()?.onaylandi===true)}).catch(()=>setIsVeli(false))},[fbUser]);
 
   const handleFooterClick=()=>{
     const c=footerClicks+1;
@@ -484,9 +565,19 @@ function App(){
       </div>
       </div>
       <div style={{maxWidth:960,margin:"0 auto",padding:"20px 16px 0",display:"flex",gap:6,flexWrap:"wrap",justifyContent:"center"}}>{[{k:"all",l:"Tümü"},...Object.entries(TL).map(([k,v])=>({k,l:`${v.icon} ${v.label}`}))].map(f=>(<button key={f.k} onClick={()=>setFilter(f.k)} style={{padding:"7px 16px",background:filter===f.k?G:"#fff",color:filter===f.k?"#fff":"#555",border:filter===f.k?"none":"1px solid #ddd",borderRadius:18,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:ff}}>{f.l}</button>))}</div>
-      <div style={{maxWidth:960,margin:"0 auto",padding:"20px 16px 40px",display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(270px,1fr))",gap:20}}>{filEvs.map(ev=><PubCard key={ev.id} ev={ev} regs={regs} onReg={setRegEv} onDet={setDetEv}/>)}{!filEvs.length&&<div style={{gridColumn:"1/-1",textAlign:"center",padding:40,color:"#999"}}>Bu kategoride etkinlik yok.</div>}</div>
+      <div style={{maxWidth:960,margin:"0 auto",padding:"20px 16px 40px",display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(270px,1fr))",gap:20}}>{filEvs.map(ev=><PubCard key={ev.id} ev={ev} regs={regs} onReg={setRegEv} onDet={setDetEv} isVeli={isVeli}/>)}{!filEvs.length&&<div style={{gridColumn:"1/-1",textAlign:"center",padding:40,color:"#999"}}>Bu kategoride etkinlik yok.</div>}</div>
 
-      {/* FOOTER - Admin giriş gizli: logoya 5 kez tıkla */}
+      {/* ABONE OL BANDI */}
+      <div style={{background:"linear-gradient(135deg, #1b5e20, #2e7d32)",padding:"28px 20px",textAlign:"center"}}>
+        <h2 style={{fontFamily:ffT,color:"#fff",margin:"0 0 6px",fontSize:20}}>📬 Etkinliklerden Haberdar Olun</h2>
+        <p style={{color:"rgba(255,255,255,0.8)",fontSize:13,margin:"0 auto 16px",maxWidth:420}}>Yeni etkinlikler eklendiğinde size e-posta ile bildirim gönderelim.</p>
+        <SubscribeForm/>
+      </div>
+
+      {/* Veli/Mezun Bilgilendirme */}
+      {fbUser&&isVeli&&<div style={{maxWidth:960,margin:"0 auto",padding:"0 16px"}}><div style={{background:"#e8f5e9",border:"1px solid #a5d6a7",borderRadius:12,padding:"12px 18px",marginTop:-8,marginBottom:8,display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:20}}>🌿</span><div><span style={{fontFamily:ff,fontWeight:800,color:"#2e5339",fontSize:13}}>Bir Çiçek Koleji Velisi</span><span style={{fontFamily:ff,color:"#555",fontSize:12,marginLeft:8}}>Etkinliklerde öncelikli kayıt hakkınız bulunmaktadır.</span></div></div></div>}
+
+      {/* FOOTER */}
       <div style={{background:`linear-gradient(135deg,${G},#1a2e21)`,padding:"28px 20px",textAlign:"center"}}>
         <h2 style={{fontFamily:ffT,color:"#fff",margin:"0 0 6px",fontSize:20}}>{S.footerTitle}</h2>
         <p style={{color:"rgba(255,255,255,0.7)",fontSize:13,margin:"0 auto 12px",maxWidth:460}}>{S.footerSubtitle}</p>
@@ -509,6 +600,7 @@ function App(){
       {ap==="events"&&<EvMgr events={events} setEvents={setEvents}/>}
       {ap==="regs"&&<RegReport events={events} regs={regs}/>}
       {ap==="kids"&&<KidReport events={events} regs={regs}/>}
+      {ap==="subs"&&<SubsPage events={events}/>}
       {ap==="settings"&&<SettingsPage settings={settings} setSettings={setSettings}/>}
     </div>
   </div>)}
