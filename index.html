@@ -77,18 +77,89 @@ function ImageUploader({images,setImages}){
   </div>)}
 
 /* ═══ AUTH BAR ═══ */
-function AuthBar({user,onLogin,onLogout}){
+function AuthBar({user,onLogin,onLogout,onProfile}){
   return(<div style={{background:"rgba(0,0,0,0.15)",padding:"6px 20px",display:"flex",justifyContent:"flex-end",alignItems:"center",gap:10}}>
     {user?(<>
       <img src={user.photoURL||LOGO} alt="" style={{width:24,height:24,borderRadius:"50%"}}/>
       <span style={{fontFamily:"'Nunito',sans-serif",fontSize:12,color:"rgba(255,255,255,0.9)",fontWeight:600}}>{user.displayName||user.email}</span>
-      <button onClick={onLogout} style={{background:"rgba(255,255,255,0.15)",border:"none",borderRadius:6,padding:"3px 10px",color:"rgba(255,255,255,0.8)",fontSize:11,cursor:"pointer",fontFamily:"'Nunito',sans-serif",fontWeight:600}}>Çıkış</button>
+      <button onClick={onProfile} style={{background:"rgba(255,255,255,0.2)",border:"none",borderRadius:6,padding:"3px 10px",color:"#fff",fontSize:11,cursor:"pointer",fontFamily:"'Nunito',sans-serif",fontWeight:700}}>👤 Profilim</button>
+      <button onClick={onLogout} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:6,padding:"3px 10px",color:"rgba(255,255,255,0.7)",fontSize:11,cursor:"pointer",fontFamily:"'Nunito',sans-serif",fontWeight:600}}>Çıkış</button>
     </>):(<>
       <span style={{fontFamily:"'Nunito',sans-serif",fontSize:11,color:"rgba(255,255,255,0.6)"}}>Kayıt için giriş yapın</span>
       <button onClick={onLogin} style={{background:"#fff",border:"none",borderRadius:6,padding:"4px 12px",color:"#2e5339",fontSize:12,cursor:"pointer",fontFamily:"'Nunito',sans-serif",fontWeight:700}}>Google ile Giriş</button>
     </>)}
   </div>)}
 
+
+
+/* ═══ PROFILE PAGE ═══ */
+function ProfilePage({user,profile,setProfile,events,regs,onClose}){
+  const[fm,setFm]=useState({name:profile?.name||user?.displayName?.split(" ")[0]||"",surname:profile?.surname||user?.displayName?.split(" ").slice(1).join(" ")||"",phone:profile?.phone||"",email:user?.email||"",address:profile?.address||"",district:profile?.district||"",emergencyName:profile?.emergencyName||"",emergencyPhone:profile?.emergencyPhone||"",allergies:profile?.allergies||"",children:profile?.children||[],kvkkConsent:profile?.kvkkConsent||false,kvkkDate:profile?.kvkkDate||"",photoConsent:profile?.photoConsent||false,marketingConsent:profile?.marketingConsent||false});
+  const[saved,setSaved]=useState(false);const[tab,setTab]=useState("info");
+  const f=(k,v)=>{setFm({...fm,[k]:v});setSaved(false)};
+  const myRegs=regs.filter(r=>r.userEmail===user?.email||r.parent?.email===user?.email);
+  const now=Date.now();
+  const upcoming=myRegs.filter(r=>{const ev=events.find(e=>e.id===r.eventId);return ev&&new Date(ev.date+"T"+ev.endTime).getTime()>now});
+  const past=myRegs.filter(r=>{const ev=events.find(e=>e.id===r.eventId);return ev&&new Date(ev.date+"T"+ev.endTime).getTime()<=now});
+
+  const addChild=()=>f("children",[...fm.children,{name:"",surname:"",birthDate:"",gender:"",currentSchool:"",specialNeeds:""}]);
+  const updChild=(i,k,v)=>{const c=[...fm.children];c[i]={...c[i],[k]:v};f("children",c)};
+  const rmChild=(i)=>f("children",fm.children.filter((_,j)=>j!==i));
+
+  const save=async()=>{
+    const data={...fm,updatedAt:new Date().toISOString()};
+    if(fm.kvkkConsent&&!profile?.kvkkDate)data.kvkkDate=new Date().toISOString();
+    await fsSave("etkinlik_profiller",user.email,data);
+    setProfile(data);setSaved(true);setTimeout(()=>setSaved(false),2000);
+  };
+
+  const tabs=[{k:"info",l:"👤 Bilgilerim"},{k:"children",l:"👶 Çocuklarım"},{k:"events",l:"📅 Etkinliklerim"},{k:"consent",l:"📋 İzinler"}];
+
+  return(<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,padding:20}}>
+    <div className="fade-in" style={{background:"#fff",borderRadius:20,maxWidth:600,width:"100%",maxHeight:"90vh",display:"flex",flexDirection:"column",boxShadow:"0 20px 60px rgba(0,0,0,0.2)",overflow:"hidden"}}>
+      <div style={{background:`linear-gradient(135deg,#2e5339,#4a7c59)`,padding:"16px 20px",color:"#fff",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div style={{display:"flex",alignItems:"center",gap:10}}><img src={user?.photoURL||LOGO} alt="" style={{width:36,height:36,borderRadius:"50%",border:"2px solid rgba(255,255,255,0.3)"}}/><div><div style={{fontSize:16,fontWeight:800,fontFamily:"'Playfair Display',serif"}}>{fm.name||"Profilim"} {fm.surname}</div><div style={{fontSize:11,opacity:0.8}}>{user?.email}</div></div></div>
+        <button onClick={onClose} style={{background:"rgba(255,255,255,0.2)",border:"none",borderRadius:"50%",width:28,height:28,color:"#fff",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+      </div>
+      <div style={{display:"flex",borderBottom:"1px solid #e8f0e8",background:"#fafcfa"}}>{tabs.map(t=>(<button key={t.k} onClick={()=>setTab(t.k)} style={{flex:1,padding:"10px 8px",border:"none",borderBottom:tab===t.k?"3px solid #2e5339":"3px solid transparent",background:"transparent",color:tab===t.k?"#2e5339":"#999",fontFamily:"'Nunito',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>{t.l}</button>))}</div>
+      <div style={{padding:"16px 20px",overflowY:"auto",flex:1}}>
+        {tab==="info"&&<div style={{display:"grid",gap:10}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><div><label style={{display:"block",fontSize:12,fontWeight:700,color:"#2e5339",marginBottom:4,fontFamily:"'Nunito',sans-serif"}}>Ad</label><input style={{width:"100%",padding:"10px 14px",border:"2px solid #dce8dc",borderRadius:10,fontSize:14,fontFamily:"'Nunito',sans-serif",outline:"none",background:"#f9fcf9",boxSizing:"border-box"}} value={fm.name} onChange={e=>f("name",e.target.value)}/></div><div><label style={{display:"block",fontSize:12,fontWeight:700,color:"#2e5339",marginBottom:4,fontFamily:"'Nunito',sans-serif"}}>Soyad</label><input style={{width:"100%",padding:"10px 14px",border:"2px solid #dce8dc",borderRadius:10,fontSize:14,fontFamily:"'Nunito',sans-serif",outline:"none",background:"#f9fcf9",boxSizing:"border-box"}} value={fm.surname} onChange={e=>f("surname",e.target.value)}/></div></div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><div><label style={{display:"block",fontSize:12,fontWeight:700,color:"#2e5339",marginBottom:4,fontFamily:"'Nunito',sans-serif"}}>Telefon</label><input style={{width:"100%",padding:"10px 14px",border:"2px solid #dce8dc",borderRadius:10,fontSize:14,fontFamily:"'Nunito',sans-serif",outline:"none",background:"#f9fcf9",boxSizing:"border-box"}} value={fm.phone} onChange={e=>f("phone",e.target.value)} placeholder="05XX XXX XX XX"/></div><div><label style={{display:"block",fontSize:12,fontWeight:700,color:"#2e5339",marginBottom:4,fontFamily:"'Nunito',sans-serif"}}>İlçe</label><input style={{width:"100%",padding:"10px 14px",border:"2px solid #dce8dc",borderRadius:10,fontSize:14,fontFamily:"'Nunito',sans-serif",outline:"none",background:"#f9fcf9",boxSizing:"border-box"}} value={fm.district} onChange={e=>f("district",e.target.value)}/></div></div>
+          <div><label style={{display:"block",fontSize:12,fontWeight:700,color:"#2e5339",marginBottom:4,fontFamily:"'Nunito',sans-serif"}}>Adres</label><input style={{width:"100%",padding:"10px 14px",border:"2px solid #dce8dc",borderRadius:10,fontSize:14,fontFamily:"'Nunito',sans-serif",outline:"none",background:"#f9fcf9",boxSizing:"border-box"}} value={fm.address} onChange={e=>f("address",e.target.value)}/></div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><div><label style={{display:"block",fontSize:12,fontWeight:700,color:"#2e5339",marginBottom:4,fontFamily:"'Nunito',sans-serif"}}>Acil Durum Kişisi</label><input style={{width:"100%",padding:"10px 14px",border:"2px solid #dce8dc",borderRadius:10,fontSize:14,fontFamily:"'Nunito',sans-serif",outline:"none",background:"#f9fcf9",boxSizing:"border-box"}} value={fm.emergencyName} onChange={e=>f("emergencyName",e.target.value)}/></div><div><label style={{display:"block",fontSize:12,fontWeight:700,color:"#2e5339",marginBottom:4,fontFamily:"'Nunito',sans-serif"}}>Acil Durum Tel</label><input style={{width:"100%",padding:"10px 14px",border:"2px solid #dce8dc",borderRadius:10,fontSize:14,fontFamily:"'Nunito',sans-serif",outline:"none",background:"#f9fcf9",boxSizing:"border-box"}} value={fm.emergencyPhone} onChange={e=>f("emergencyPhone",e.target.value)}/></div></div>
+          <div><label style={{display:"block",fontSize:12,fontWeight:700,color:"#2e5339",marginBottom:4,fontFamily:"'Nunito',sans-serif"}}>Allerji / Sağlık Durumu</label><textarea style={{width:"100%",padding:"10px 14px",border:"2px solid #dce8dc",borderRadius:10,fontSize:14,fontFamily:"'Nunito',sans-serif",outline:"none",background:"#f9fcf9",boxSizing:"border-box",minHeight:50,resize:"vertical"}} value={fm.allergies} onChange={e=>f("allergies",e.target.value)}/></div>
+        </div>}
+
+        {tab==="children"&&<div style={{display:"grid",gap:12}}>
+          {fm.children.map((c,i)=>(<div key={i} style={{background:"#f9fcf9",borderRadius:10,padding:14,border:"1px solid #dce8dc"}}>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}><span style={{fontFamily:"'Nunito',sans-serif",fontWeight:800,color:"#2e5339",fontSize:13}}>👶 {i+1}. Çocuk</span><button onClick={()=>rmChild(i)} style={{background:"#ffebee",border:"none",borderRadius:6,padding:"3px 8px",color:"#c62828",fontSize:11,fontWeight:700,cursor:"pointer"}}>Kaldır</button></div>
+            <div style={{display:"grid",gap:8}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}><input style={{width:"100%",padding:"8px 12px",border:"2px solid #dce8dc",borderRadius:8,fontSize:13,fontFamily:"'Nunito',sans-serif",outline:"none",background:"#fff",boxSizing:"border-box"}} value={c.name} onChange={e=>updChild(i,"name",e.target.value)} placeholder="Ad"/><input style={{width:"100%",padding:"8px 12px",border:"2px solid #dce8dc",borderRadius:8,fontSize:13,fontFamily:"'Nunito',sans-serif",outline:"none",background:"#fff",boxSizing:"border-box"}} value={c.surname} onChange={e=>updChild(i,"surname",e.target.value)} placeholder="Soyad"/></div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}><input type="date" style={{width:"100%",padding:"8px 12px",border:"2px solid #dce8dc",borderRadius:8,fontSize:13,fontFamily:"'Nunito',sans-serif",outline:"none",background:"#fff",boxSizing:"border-box"}} value={c.birthDate} onChange={e=>updChild(i,"birthDate",e.target.value)}/><select style={{width:"100%",padding:"8px 12px",border:"2px solid #dce8dc",borderRadius:8,fontSize:13,fontFamily:"'Nunito',sans-serif",outline:"none",background:"#fff",boxSizing:"border-box",appearance:"auto"}} value={c.gender} onChange={e=>updChild(i,"gender",e.target.value)}><option value="">Cinsiyet</option><option value="kiz">Kız</option><option value="erkek">Erkek</option></select><input style={{width:"100%",padding:"8px 12px",border:"2px solid #dce8dc",borderRadius:8,fontSize:13,fontFamily:"'Nunito',sans-serif",outline:"none",background:"#fff",boxSizing:"border-box"}} value={c.currentSchool} onChange={e=>updChild(i,"currentSchool",e.target.value)} placeholder="Okul"/></div>
+            </div>
+          </div>))}
+          <button onClick={addChild} style={{padding:10,background:"#f1f8f1",border:"2px dashed #4a7c59",borderRadius:10,color:"#2e5339",fontFamily:"'Nunito',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>+ Çocuk Ekle</button>
+          {!fm.children.length&&<p style={{textAlign:"center",color:"#999",fontFamily:"'Nunito',sans-serif",fontSize:13}}>Henüz çocuk bilgisi eklenmemiş.</p>}
+        </div>}
+
+        {tab==="events"&&<div>
+          {upcoming.length>0&&<><h3 style={{fontFamily:"'Nunito',sans-serif",fontWeight:800,color:"#2e5339",fontSize:14,margin:"0 0 10px"}}>📅 Yaklaşan Etkinliklerim</h3>
+          {upcoming.map((r,i)=>{const ev=events.find(e=>e.id===r.eventId);if(!ev)return null;return(<div key={i} style={{background:"#e8f5e9",borderRadius:10,padding:12,marginBottom:8,border:"1px solid #c8e6c9"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><div><div style={{fontFamily:"'Playfair Display',serif",fontWeight:800,color:"#1b3a26",fontSize:14}}>{ev.title}</div><div style={{fontFamily:"'Nunito',sans-serif",fontSize:11,color:"#666",marginTop:2}}>{fmtDate(ev.date)} • {ev.startTime}–{ev.endTime}</div><div style={{fontFamily:"'Nunito',sans-serif",fontSize:11,color:"#888",marginTop:2}}>Çocuk: {r.children?.map(c=>c.name).join(", ")}</div></div>{ev.mapUrl&&<a href={ev.mapUrl} target="_blank" rel="noopener noreferrer" style={{background:"#1565c0",color:"#fff",padding:"6px 12px",borderRadius:8,fontSize:11,textDecoration:"none",fontWeight:700,fontFamily:"'Nunito',sans-serif",whiteSpace:"nowrap"}}>📍 Yol Tarifi</a>}</div></div>)})}</>}
+          {past.length>0&&<><h3 style={{fontFamily:"'Nunito',sans-serif",fontWeight:800,color:"#795548",fontSize:14,margin:"16px 0 10px"}}>📋 Geçmiş Katılımlarım</h3>
+          {past.map((r,i)=>{const ev=events.find(e=>e.id===r.eventId);if(!ev)return null;return(<div key={i} style={{background:"#f5f5f5",borderRadius:10,padding:12,marginBottom:8,border:"1px solid #e0e0e0"}}><div style={{fontFamily:"'Playfair Display',serif",fontWeight:800,color:"#555",fontSize:13}}>{ev.title}</div><div style={{fontFamily:"'Nunito',sans-serif",fontSize:11,color:"#888",marginTop:2}}>{fmtDate(ev.date)} • Çocuk: {r.children?.map(c=>c.name).join(", ")}</div></div>)})}</>}
+          {!myRegs.length&&<p style={{textAlign:"center",color:"#999",fontFamily:"'Nunito',sans-serif",fontSize:13,padding:20}}>Henüz bir etkinliğe kayıt olmadınız.</p>}
+        </div>}
+
+        {tab==="consent"&&<div style={{display:"grid",gap:12}}>
+          <div style={{background:"#f9fcf9",border:"1px solid #dce8dc",borderRadius:10,padding:14}}><div style={{display:"flex",gap:8,alignItems:"flex-start"}}><input type="checkbox" checked={fm.kvkkConsent} onChange={e=>f("kvkkConsent",e.target.checked)} style={{marginTop:2,width:18,height:18,accentColor:"#2e5339",flexShrink:0}}/><div><div style={{fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:13,color:"#2e5339"}}>KVKK Aydınlatma Metni <span style={{color:"#e53935"}}>*</span></div><div style={{fontFamily:"'Nunito',sans-serif",fontSize:11,color:"#666",lineHeight:1.6,marginTop:4}}>6698 sayılı KVKK kapsamında, kişisel verilerimin etkinlik organizasyonu, iletişim ve kayıt süreçleri amacıyla işlenmesine açık rıza veriyorum.</div>{fm.kvkkDate&&<div style={{fontFamily:"'Nunito',sans-serif",fontSize:10,color:"#4a7c59",marginTop:4}}>✅ Onay tarihi: {new Date(fm.kvkkDate).toLocaleDateString("tr-TR")}</div>}</div></div></div>
+          <div style={{background:"#f9fcf9",border:"1px solid #dce8dc",borderRadius:10,padding:14}}><div style={{display:"flex",gap:8,alignItems:"flex-start"}}><input type="checkbox" checked={fm.photoConsent} onChange={e=>f("photoConsent",e.target.checked)} style={{marginTop:2,width:18,height:18,accentColor:"#2e5339",flexShrink:0}}/><div><div style={{fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:13,color:"#2e5339"}}>Fotoğraf / Video Kullanım İzni</div><div style={{fontFamily:"'Nunito',sans-serif",fontSize:11,color:"#666",lineHeight:1.6,marginTop:4}}>Etkinliklerde çekilecek fotoğraf ve videoların okul tanıtımında kullanılmasına izin veriyorum.</div></div></div></div>
+          <div style={{background:"#f9fcf9",border:"1px solid #dce8dc",borderRadius:10,padding:14}}><div style={{display:"flex",gap:8,alignItems:"flex-start"}}><input type="checkbox" checked={fm.marketingConsent} onChange={e=>f("marketingConsent",e.target.checked)} style={{marginTop:2,width:18,height:18,accentColor:"#2e5339",flexShrink:0}}/><div><div style={{fontFamily:"'Nunito',sans-serif",fontWeight:800,fontSize:13,color:"#2e5339"}}>İletişim İzni (Opsiyonel)</div><div style={{fontFamily:"'Nunito',sans-serif",fontSize:11,color:"#666",lineHeight:1.6,marginTop:4}}>Eğitim ve etkinlik bilgilendirmeleri için iletişim kurulmasına izin veriyorum.</div></div></div></div>
+        </div>}
+      </div>
+      <div style={{padding:"14px 20px",borderTop:"1px solid #e8f0e8",display:"flex",justifyContent:"space-between",background:"#fafcfa"}}><button onClick={onClose} style={{padding:"10px 20px",background:"transparent",border:"2px solid #ccc",borderRadius:10,color:"#666",fontFamily:"'Nunito',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>Kapat</button><div style={{display:"flex",gap:8,alignItems:"center"}}>{saved&&<span style={{fontFamily:"'Nunito',sans-serif",fontSize:12,color:"#2e7d32",fontWeight:700}}>✅ Kaydedildi!</span>}<button onClick={save} style={{padding:"10px 24px",background:"linear-gradient(135deg,#2e5339,#4a7c59)",color:"#fff",border:"none",borderRadius:10,fontFamily:"'Nunito',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>💾 Kaydet</button></div></div>
+    </div>
+  </div>)}
 
 
 /* ═══ CONFIG ═══ */
@@ -199,13 +270,13 @@ const CT=`Etkinlik süresince çekilecek fotoğraf ve video kayıtlarının, Bir
 const MT=`Bir Çiçek Koleji Anaokulu tarafından eğitim ve etkinlik bilgilendirmeleri amacıyla iletişim kurulmasına izin veriyorum.`;
 const KT=`6698 sayılı KVKK kapsamında, kişisel verilerimin etkinlik organizasyonu amacıyla işlenmesine açık rıza veriyorum.`;
 
-function RegModal({event,onClose,onSubmit,settings,user}){
+function RegModal({event,onClose,onSubmit,settings,user,profile}){
   const totalSteps=event.isFree?4:5;
   const[step,setStep]=useState(1);
-  const[p,setP]=useState({name:user?.displayName?.split(" ")[0]||"",surname:user?.displayName?.split(" ").slice(1).join(" ")||"",phone:"",email:user?.email||"",address:"",district:"",attendeeCount:"1"});
-  const[ch,setCh]=useState([emptyChild()]);
-  const[ex,setEx]=useState({heardFrom:"",allergies:"",emergencyName:"",emergencyPhone:"",notes:""});
-  const[co,setCo]=useState({photo:false,marketing:false,kvkk:false});
+  const[p,setP]=useState({name:profile?.name||user?.displayName?.split(" ")[0]||"",surname:profile?.surname||user?.displayName?.split(" ").slice(1).join(" ")||"",phone:profile?.phone||"",email:user?.email||"",address:profile?.address||"",district:profile?.district||"",attendeeCount:"1"});
+  const[ch,setCh]=useState(profile?.children?.length?profile.children.map(c=>({...c})):[emptyChild()]);
+  const[ex,setEx]=useState({heardFrom:"",allergies:profile?.allergies||"",emergencyName:profile?.emergencyName||"",emergencyPhone:profile?.emergencyPhone||"",notes:""});
+  const[co,setCo]=useState({photo:profile?.photoConsent||false,marketing:profile?.marketingConsent||false,kvkk:profile?.kvkkConsent||false});
   const[payMethod,setPayMethod]=useState("");
   const[done,setDone]=useState(false);const[err,setErr]=useState({});
 
@@ -345,8 +416,14 @@ function App(){
   useEffect(()=>{const u=fbAuth.onAuthStateChanged(u=>{setFbUser(u)});return()=>u()},[]);
   // Load from Firestore
   useEffect(()=>{async function load(){try{const[e,r]=await Promise.all([fsLoad("etkinlikler"),fsLoad("etkinlik_kayitlari")]);setEvents(e);setRegs(r);const s=await fbDb.collection("etkinlik_ayarlar").doc("main").get();if(s.exists)setSettings({...DEFAULT_SETTINGS,...s.data()})}catch(e){console.error(e)}setLoading(false)}load()},[]); 
+  // Load profile when user logs in
+  useEffect(()=>{if(!fbUser)return;async function lp(){try{const d=await fbDb.collection("etkinlik_profiller").doc(fbUser.email).get();if(d.exists)setProfile(d.data())}catch(e){}}lp()},[fbUser]);
   const googleLogin=async()=>{try{await fbAuth.signInWithPopup(fbGoogleProvider)}catch(e){console.log("Auth error:",e.code,e.message);if(e.code==="auth/popup-blocked"||e.code==="auth/cancelled-popup-request"||e.code==="auth/popup-closed-by-user"){try{await fbAuth.signInWithRedirect(fbGoogleProvider)}catch(e2){console.error("Redirect error:",e2)}}else if(e.code==="auth/unauthorized-domain"){alert("Bu domain Firebase'de yetkili değil. Firebase Console > Authentication > Settings > Authorized domains'e ekleyin: "+window.location.hostname)}}};const googleLogout=()=>fbAuth.signOut();
-  const handleNewReg=async(reg)=>{const id=await fsAdd("etkinlik_kayitlari",reg);if(id)setRegs(p=>[...p,{...reg,_docId:id}])};
+  const handleNewReg=async(reg)=>{
+    const id=await fsAdd("etkinlik_kayitlari",reg);if(id)setRegs(p=>[...p,{...reg,_docId:id}]);
+    // Auto-save profile from registration data
+    if(fbUser&&reg.parent){const pData={name:reg.parent.name,surname:reg.parent.surname,phone:reg.parent.phone,email:reg.parent.email,address:reg.parent.address,district:reg.parent.district,emergencyName:reg.extra?.emergencyName||"",emergencyPhone:reg.extra?.emergencyPhone||"",allergies:reg.extra?.allergies||"",children:reg.children||[],updatedAt:new Date().toISOString()};if(!profile){pData.kvkkConsent=true;pData.kvkkDate=new Date().toISOString();pData.photoConsent=true}await fsSave("etkinlik_profiller",fbUser.email,{...profile,...pData});setProfile(p=>({...p,...pData}))}
+  };
 
   const pubEvs=events.filter(e=>e.status==="published");
   const filEvs=filter==="all"?pubEvs:pubEvs.filter(e=>e.type===filter);
@@ -370,7 +447,7 @@ function App(){
   if(view==="public")return(
     <div style={{minHeight:"100vh",background:"#f4f7f2",fontFamily:ff}}>
       <div style={{background:`linear-gradient(160deg,#1b3a26 0%,${G} 40%,${GL} 100%)`,position:"relative",overflow:"hidden"}}>
-        <AuthBar user={fbUser} onLogin={googleLogin} onLogout={googleLogout}/>
+        <AuthBar user={fbUser} onLogin={googleLogin} onLogout={googleLogout} onProfile={()=>setShowProfile(true)}/>
         <div style={{padding:"32px 20px 28px",textAlign:"center",position:"relative"}}>
         <div style={{position:"absolute",inset:0,opacity:0.05,backgroundImage:`url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23fff'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/svg%3E")`}}/>
         <div style={{position:"relative",zIndex:1}}>
@@ -396,8 +473,9 @@ function App(){
         </div>
       </div>
 
-      {regEv&&<RegModal event={regEv} onClose={()=>setRegEv(null)} onSubmit={handleNewReg} settings={settings} user={fbUser}/>}
+      {regEv&&<RegModal event={regEv} onClose={()=>setRegEv(null)} onSubmit={handleNewReg} settings={settings} user={fbUser} profile={profile}/>}
       {detEv&&<DetModal ev={detEv} regs={regs} onClose={()=>setDetEv(null)} onReg={setRegEv}/>}
+      {showProfile&&fbUser&&<ProfilePage user={fbUser} profile={profile} setProfile={setProfile} events={events} regs={regs} onClose={()=>setShowProfile(false)}/>}
     </div>);
 
   return(<div style={{display:"flex",minHeight:"100vh",fontFamily:ff}}>
