@@ -366,7 +366,7 @@ function App(){
   useEffect(()=>{const u=fbAuth.onAuthStateChanged(u=>{setFbUser(u)});return()=>u()},[]);
   // Load from Firestore
   useEffect(()=>{async function load(){try{const[e,r]=await Promise.all([fsLoad("etkinlikler"),fsLoad("etkinlik_kayitlari")]);setEvents(e);setRegs(r);const s=await fbDb.collection("etkinlik_ayarlar").doc("main").get();if(s.exists)setSettings({...DEFAULT_SETTINGS,...s.data()})}catch(e){console.error(e)}setLoading(false)}load()},[]); 
-  const googleLogin=async()=>{try{await fbAuth.signInWithPopup(fbGoogleProvider)}catch(e){if(e.code==="auth/popup-blocked")try{await fbAuth.signInWithRedirect(fbGoogleProvider)}catch(e2){}}};const googleLogout=()=>fbAuth.signOut();
+  const googleLogin=async()=>{try{await fbAuth.signInWithPopup(fbGoogleProvider)}catch(e){console.log("Auth error:",e.code,e.message);if(e.code==="auth/popup-blocked"||e.code==="auth/cancelled-popup-request"||e.code==="auth/popup-closed-by-user"){try{await fbAuth.signInWithRedirect(fbGoogleProvider)}catch(e2){console.error("Redirect error:",e2)}}else if(e.code==="auth/unauthorized-domain"){alert("Bu domain Firebase'de yetkili değil. Firebase Console > Authentication > Settings > Authorized domains'e ekleyin: "+window.location.hostname)}}};const googleLogout=()=>fbAuth.signOut();
   const handleNewReg=async(reg)=>{const id=await fsAdd("etkinlik_kayitlari",reg);if(id)setRegs(p=>[...p,{...reg,_docId:id}])};
 
   const pubEvs=events.filter(e=>e.status==="published");
