@@ -92,14 +92,8 @@ function AuthBar({user,onLogin,onLogout}){
 
 
 /* ═══ CONFIG ═══ */
-const ADMIN_USER="3MRAHB4Y";
-const ADMIN_PASS="bf7oz3dk.BE";
-
-// EmailJS - Kendi bilgilerinizi girin
-const EMAILJS_PUBLIC_KEY="YOUR_PUBLIC_KEY";
-const EMAILJS_SERVICE_ID="YOUR_SERVICE_ID";
-const EMAILJS_TEMPLATE_USER="YOUR_USER_TEMPLATE_ID";
-const EMAILJS_TEMPLATE_ADMIN="YOUR_ADMIN_TEMPLATE_ID";
+const ADMIN_EMAIL="emrahby@gmail.com";
+const SCHOOL_EMAIL="eposta@bircicekkoleji.com";
 
 const IBAN_INFO={
   bankName:"Banka Adı (Admin panelinden güncelleyin)",
@@ -189,21 +183,6 @@ function useCountdown(td){const[t,setT]=useState({});useEffect(()=>{const c=()=>
 function Countdown({date}){const t=useCountdown(date);if(t.expired)return<span style={{color:"#c62828",fontWeight:600,fontSize:12,fontFamily:ff}}>Sona erdi</span>;return(<div style={{display:"flex",gap:4}}>{[{v:t.days,l:"Gün"},{v:t.hours,l:"Saat"},{v:t.minutes,l:"Dk"},{v:t.seconds,l:"Sn"}].map((u,i)=>(<div key={i} style={{background:`linear-gradient(135deg,${G},${GL})`,color:"#fff",borderRadius:6,padding:"3px 6px",textAlign:"center",minWidth:36,fontFamily:"'DM Mono', monospace"}}><div style={{fontSize:14,fontWeight:700,lineHeight:1.2}}>{String(u.v||0).padStart(2,"0")}</div><div style={{fontSize:8,opacity:0.85,letterSpacing:0.5}}>{u.l}</div></div>))}</div>)}
 
 /* ═══ ADMIN LOGIN ═══ */
-function LoginModal({onLogin,onClose}){
-  const[u,setU]=useState("");const[p,setP]=useState("");const[err,setErr]=useState(false);
-  const go=()=>{if(u===ADMIN_USER&&p===ADMIN_PASS){onLogin()}else{setErr(true);setTimeout(()=>setErr(false),2000)}};
-  return(<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:2000,padding:20}}>
-    <div className="fade-in" style={{background:"#fff",borderRadius:20,padding:"32px 28px",maxWidth:380,width:"100%",boxShadow:"0 20px 60px rgba(0,0,0,0.3)"}}>
-      <div style={{textAlign:"center",marginBottom:20}}><img src={LOGO} style={{width:56,height:56,borderRadius:"50%",display:"block",margin:"0 auto 10px"}}/><h2 style={{fontFamily:ffT,color:G,fontSize:20,margin:0}}>Yönetim Paneli</h2><p style={{fontFamily:ff,color:"#888",fontSize:12,marginTop:4}}>Giriş bilgilerinizi girin</p></div>
-      <div style={{display:"grid",gap:12}}>
-        <div><label style={lbl}>Kullanıcı Adı</label><input style={inp(err)} value={u} onChange={e=>setU(e.target.value)} placeholder="Kullanıcı adı" onKeyDown={e=>e.key==="Enter"&&go()}/></div>
-        <div><label style={lbl}>Şifre</label><input type="password" style={inp(err)} value={p} onChange={e=>setP(e.target.value)} placeholder="Şifre" onKeyDown={e=>e.key==="Enter"&&go()}/></div>
-        {err&&<div style={{background:"#ffebee",color:"#c62828",padding:"8px 12px",borderRadius:8,fontSize:12,fontFamily:ff,fontWeight:700,textAlign:"center"}}>Kullanıcı adı veya şifre hatalı!</div>}
-        <button onClick={go} style={{...btnP,width:"100%",marginTop:4}}>Giriş Yap</button>
-        <button onClick={onClose} style={{...btnS,width:"100%",borderColor:"#ccc",color:"#888",fontSize:12}}>İptal</button>
-      </div>
-    </div>
-  </div>)}
 
 /* ═══ PUBLIC CARD ═══ */
 function PubCard({ev,regs,onReg,onDet}){const tp=TL[ev.type]||TL.gezi;const rc=regs.filter(r=>r.eventId===ev.id).length;const pct=Math.round((rc/ev.capacity)*100);const d=new Date(ev.date);const img=ev.images?.[0]||"https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=600&h=400&fit=crop";
@@ -354,7 +333,7 @@ function App(){
   const[fbUser,setFbUser]=useState(null);
   const[loading,setLoading]=useState(true);
   const[view,setView]=useState("public");
-  const[showLogin,setShowLogin]=useState(false);
+  
   const[ap,setAp]=useState("dash");
   const[events,setEvents]=useState(SE);
   const[regs,setRegs]=useState(SR);
@@ -373,10 +352,17 @@ function App(){
   const filEvs=filter==="all"?pubEvs:pubEvs.filter(e=>e.type===filter);
   const S=settings;
 
+  const isAdmin=fbUser&&fbUser.email===ADMIN_EMAIL;
+
   const handleFooterClick=()=>{
     const c=footerClicks+1;
     setFooterClicks(c);
-    if(c>=5){setShowLogin(true);setFooterClicks(0)}
+    if(c>=5){
+      setFooterClicks(0);
+      if(isAdmin){setView("admin")}
+      else if(fbUser){alert("Bu hesapta admin yetkisi yok.")}
+      else{googleLogin()}
+    }
     setTimeout(()=>setFooterClicks(0),3000);
   };
 
@@ -412,7 +398,6 @@ function App(){
 
       {regEv&&<RegModal event={regEv} onClose={()=>setRegEv(null)} onSubmit={handleNewReg} settings={settings} user={fbUser}/>}
       {detEv&&<DetModal ev={detEv} regs={regs} onClose={()=>setDetEv(null)} onReg={setRegEv}/>}
-      {showLogin&&<LoginModal onLogin={()=>{setShowLogin(false);setView("admin")}} onClose={()=>setShowLogin(false)}/>}
     </div>);
 
   return(<div style={{display:"flex",minHeight:"100vh",fontFamily:ff}}>
