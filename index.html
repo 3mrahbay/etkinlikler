@@ -10,7 +10,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Nunito',sans-serif}
@@ -33,10 +32,9 @@ const ADMIN_USER="3MRAHB4Y";
 const ADMIN_PASS="bf7oz3dk.BE";
 
 // EmailJS - Kendi bilgilerinizi girin
-const EMAILJS_PUBLIC_KEY="_VnABdAj03KuoOHYM";
-const EMAILJS_SERVICE_ID="BirCicek_Mail";
-const EMAILJS_TEMPLATE_USER="template_1e4we63";
-// Admin bildirimi template BCC ile gider - ayrı template gerekmez
+// Brevo Mail Proxy (BCK_MailProxy - tüm okul siteleriyle ortak)
+const BREVO_PROXY_URL="https://script.google.com/macros/s/AKfycbwUNvVhTCvxUKOMtbFJ4_UASBo8-sgT13qT_9tWeYKZR3IYaYKUhGdSaGgGaaqMaZLf/exec";
+const SCHOOL_EMAIL="eposta@bircicekkoleji.com";
 
 const IBAN_INFO={
   bankName:"Banka Adı (Admin panelinden güncelleyin)",
@@ -79,34 +77,95 @@ const btnP={padding:"10px 24px",background:`linear-gradient(135deg,${G},${GL})`,
 const btnS={padding:"10px 20px",background:"transparent",border:`2px solid ${G}`,borderRadius:10,color:G,fontFamily:ff,fontWeight:700,fontSize:13,cursor:"pointer"};
 const crd={background:"#fff",borderRadius:14,padding:20,boxShadow:"0 2px 12px rgba(46,83,57,0.07)",marginBottom:16};
 
-/* ═══ EMAIL ═══ */
-function sendRegistrationEmails(event, reg, settings){
-  if(typeof emailjs==="undefined"){console.log("EmailJS not loaded - skipping emails");return}
-  // Kullanıcıya giden mail
+/* ═══ BREVO MAIL ═══ */
+function brevoMail(to, toName, subject, htmlContent, replyTo){
   try{
-    emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_USER, {
-      to_email: reg.parent.email,
-      to_name: reg.parent.name + " " + reg.parent.surname,
-      event_title: event.title,
-      event_date: fmtDate(event.date),
-      event_time: event.startTime + " - " + event.endTime,
-      event_location: event.location,
-      map_url: event.mapUrl || "",
-      child_name: reg.children.map(c=>c.name).join(", "),
-      is_paid: !event.isFree ? "Evet" : "Hayır",
-      fee: event.isFree ? "Ücretsiz" : event.fee + " TL",
-      payment_method: reg.paymentMethod === "iban" ? "Havale / EFT" : reg.paymentMethod === "event" ? "Etkinlik Günü" : "",
-      iban_info: !event.isFree && reg.paymentMethod === "iban" ? `${settings.ibanBank} - ${settings.ibanHolder} - ${settings.ibanNumber}` : "",
-      school_phone: "0216 393 54 57",
-      parent_phone: reg.parent.phone,
-      parent_district: reg.parent.district,
-      children_info: reg.children.map(c=>`${c.name} ${c.surname} (${c.gender==="kiz"?"Kız":"Erkek"}, DT: ${c.birthDate})`).join(" | "),
-      heard_from: reg.extra.heardFrom,
-      allergies: reg.extra.allergies || "Yok",
-      notes: reg.extra.notes || "Yok",
-      timestamp: new Date().toLocaleString("tr-TR"),
-    }, EMAILJS_PUBLIC_KEY);
-  }catch(e){console.log("Email error:",e)}
+    fetch(BREVO_PROXY_URL, {
+      method:"POST",
+      body:JSON.stringify({ to, toName, subject, htmlContent, replyTo: replyTo||"" })
+    }).then(r=>r.text()).then(t=>console.log("Brevo:",t)).catch(e=>console.log("Brevo err:",e));
+  }catch(e){console.log("Mail error:",e)}
+}
+
+function sendRegistrationEmails(event, reg, settings){
+  const parentName = reg.parent.name+" "+reg.parent.surname;
+  const childNames = reg.children.map(c=>c.name).join(", ");
+  const payLabel = reg.paymentMethod==="iban"?"Havale / EFT":reg.paymentMethod==="event"?"Etkinlik Günü Ödeme":"Ücretsiz";
+  const ibanBlock = (!event.isFree && reg.paymentMethod==="iban") ?
+    `<div style="background:#fff8e1;border-radius:10px;padding:14px 18px;margin:16px 0;border-left:4px solid #ff8f00">
+      <h3 style="margin:0 0 6px;color:#e65100;font-size:13px">Ödeme Bilgileri</h3>
+      <p style="font-size:12px;color:#555;margin:0;line-height:1.8">
+        <strong>Banka:</strong> ${settings.ibanBank}<br>
+        <strong>Hesap Sahibi:</strong> ${settings.ibanHolder}<br>
+        <strong>IBAN:</strong> <span style="font-family:monospace;font-weight:700;color:#2e5339">${settings.ibanNumber}</span><br>
+        <strong>Açıklama:</strong> ${event.title} - ${parentName}<br>
+        <strong>Tutar:</strong> ${event.fee} TL
+      </p>
+    </div>` : "";
+  const mapBlock = event.mapUrl ?
+    `<p style="text-align:center;margin:16px 0"><a href="${event.mapUrl}" style="background:#1565c0;color:white;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:14px">Yol Tarifi Al</a></p>` : "";
+
+  // 1) Veliye onay maili
+  const userHtml = `<div style="font-family:'Segoe UI',Arial,sans-serif;max-width:600px;margin:0 auto">
+    <div style="background:linear-gradient(135deg,#2e5339,#4a7c59);padding:28px 24px;text-align:center;border-radius:12px 12px 0 0">
+      <h1 style="color:white;margin:0;font-size:20px">Bir Çiçek Koleji Anaokulu</h1>
+      <p style="color:rgba(255,255,255,0.8);margin:6px 0 0;font-size:13px">Etkinlik Kayıt Onayı</p>
+    </div>
+    <div style="background:white;padding:24px 28px;border:1px solid #e0e0e0">
+      <p style="font-size:15px;color:#333">Sayın <strong>${parentName}</strong>,</p>
+      <p style="font-size:14px;color:#555;line-height:1.7"><strong style="color:#2e5339">${event.title}</strong> etkinliğine kaydınız başarıyla oluşturulmuştur!</p>
+      <div style="background:#f1f8f1;border-radius:10px;padding:16px 18px;margin:20px 0;border-left:4px solid #2e5339">
+        <table style="width:100%;font-size:13px;color:#444;border-collapse:collapse">
+          <tr><td style="padding:5px 0;width:100px;font-weight:bold">Tarih:</td><td>${fmtDate(event.date)}</td></tr>
+          <tr><td style="padding:5px 0;font-weight:bold">Saat:</td><td>${event.startTime} - ${event.endTime}</td></tr>
+          <tr><td style="padding:5px 0;font-weight:bold">Konum:</td><td>${event.location}</td></tr>
+          <tr><td style="padding:5px 0;font-weight:bold">Çocuk:</td><td>${childNames}</td></tr>
+          <tr><td style="padding:5px 0;font-weight:bold">Ücret:</td><td>${event.isFree?"Ücretsiz":event.fee+" TL"}</td></tr>
+          <tr><td style="padding:5px 0;font-weight:bold">Ödeme:</td><td>${payLabel}</td></tr>
+        </table>
+      </div>
+      ${ibanBlock}
+      ${mapBlock}
+      <p style="font-size:12px;color:#888;margin-top:16px;line-height:1.6">Sorularınız için: 0216 393 54 57 | eposta@bircicekkoleji.com</p>
+    </div>
+    <div style="background:#2e5339;padding:14px;text-align:center;border-radius:0 0 12px 12px">
+      <p style="color:rgba(255,255,255,0.5);font-size:10px;margin:0">© 2026 Bir Çiçek Koleji Anaokulu | Tuzla, İstanbul</p>
+    </div>
+  </div>`;
+
+  brevoMail(reg.parent.email, parentName, event.title+" - Kaydınız Alındı | Bir Çiçek Koleji", userHtml, SCHOOL_EMAIL);
+
+  // 2) Okula bildirim maili
+  const childrenDetail = reg.children.map(c=>`${c.name} ${c.surname} (${c.gender==="kiz"?"Kız":"Erkek"}, DT: ${c.birthDate}, Okul: ${c.currentSchool||"-"}, Özel: ${c.specialNeeds||"-"})`).join("<br>");
+  const adminHtml = `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
+    <div style="background:#2e5339;padding:18px;text-align:center;border-radius:10px 10px 0 0">
+      <h2 style="color:white;margin:0;font-size:18px">Yeni Etkinlik Kaydı</h2>
+    </div>
+    <div style="background:white;padding:20px;border:1px solid #ddd">
+      <h3 style="color:#2e5339;margin:0 0 14px">${event.title} — ${fmtDate(event.date)}</h3>
+      <table style="width:100%;font-size:13px;border-collapse:collapse">
+        <tr style="background:#f5f5f5"><td style="padding:8px;font-weight:bold" colspan="2">Ebeveyn</td></tr>
+        <tr><td style="padding:5px 8px;width:120px"><strong>Ad Soyad:</strong></td><td>${parentName}</td></tr>
+        <tr><td style="padding:5px 8px"><strong>Telefon:</strong></td><td>${reg.parent.phone}</td></tr>
+        <tr><td style="padding:5px 8px"><strong>E-posta:</strong></td><td>${reg.parent.email}</td></tr>
+        <tr><td style="padding:5px 8px"><strong>Adres:</strong></td><td>${reg.parent.address}, ${reg.parent.district}</td></tr>
+        <tr style="background:#f5f5f5"><td style="padding:8px;font-weight:bold" colspan="2">Çocuk(lar)</td></tr>
+        <tr><td style="padding:5px 8px" colspan="2">${childrenDetail}</td></tr>
+        <tr style="background:#f5f5f5"><td style="padding:8px;font-weight:bold" colspan="2">Detaylar</td></tr>
+        <tr><td style="padding:5px 8px"><strong>Kaynak:</strong></td><td>${reg.extra.heardFrom}</td></tr>
+        <tr><td style="padding:5px 8px"><strong>Allerji:</strong></td><td>${reg.extra.allergies||"Yok"}</td></tr>
+        <tr><td style="padding:5px 8px"><strong>Ödeme:</strong></td><td>${payLabel}</td></tr>
+        <tr><td style="padding:5px 8px"><strong>Acil:</strong></td><td>${reg.extra.emergencyName} - ${reg.extra.emergencyPhone}</td></tr>
+        <tr><td style="padding:5px 8px"><strong>Not:</strong></td><td>${reg.extra.notes||"Yok"}</td></tr>
+        <tr><td style="padding:5px 8px"><strong>Zaman:</strong></td><td>${new Date().toLocaleString("tr-TR")}</td></tr>
+      </table>
+    </div>
+    <div style="background:#eee;padding:10px;text-align:center;border-radius:0 0 10px 10px">
+      <p style="font-size:10px;color:#888;margin:0">etkinlikler.bircicekkoleji.com | otomatik bildirim</p>
+    </div>
+  </div>`;
+
+  brevoMail(SCHOOL_EMAIL, "Bir Çiçek Koleji", "Yeni Kayıt: "+event.title+" - "+parentName, adminHtml, reg.parent.email);
 }
 
 /* ═══ COUNTDOWN ═══ */
