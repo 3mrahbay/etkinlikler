@@ -4,37 +4,102 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Etkinlikler | Bir Çiçek Koleji Anaokulu</title>
-<meta name="description" content="Bir Çiçek Koleji Anaokulu etkinlikleri. Montessori ve Orman Okulu yaklaşımıyla atölye, gezi ve seminerler.">
-<link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAC1JREFUWEdjYBgFoyAw0CFg+P8/w38GJCYyG10e3YxRB4w6YNQBI90BDAwMAACGJAkhu/zXAAAAAElFTkSuQmCC">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Nunito:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Nunito',sans-serif}
-::-webkit-scrollbar{width:6px}
-::-webkit-scrollbar-track{background:#f1f1f1}
-::-webkit-scrollbar-thumb{background:#4a7c59;border-radius:3px}
-@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-.fade-in{animation:fadeIn 0.3s ease}
+*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Nunito',sans-serif}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-thumb{background:#4a7c59;border-radius:3px}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}.fade-in{animation:fadeIn .3s ease}
+@keyframes spin{to{transform:rotate(360deg)}}.spinner{width:24px;height:24px;border:3px solid #e0e0e0;border-top-color:#2e5339;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto}
 </style>
 </head>
 <body>
 <div id="root"></div>
+<script>
+// Firebase Init
+firebase.initializeApp({apiKey:"AIzaSyARlqAoh-HRBC9xPwj7qRgG-IuZFSH39Uc",authDomain:"bcka-site.firebaseapp.com",projectId:"bcka-site",storageBucket:"bcka-site.firebasestorage.app",messagingSenderId:"736581475783",appId:"1:736581475783:web:5729a05ed4d05f1d1d0de2"});
+var fbAuth=firebase.auth(),fbDb=firebase.firestore(),fbStorage=firebase.storage(),fbGoogleProvider=new firebase.auth.GoogleAuthProvider();
+
+// Firestore CRUD
+function fsLoad(c){return fbDb.collection(c).get().then(function(s){return s.docs.map(function(d){var o=d.data();o._docId=d.id;return o})}).catch(function(){return[]})}
+function fsSave(c,id,d){return fbDb.collection(c).doc(id).set(d,{merge:true}).catch(function(e){console.error(e)})}
+function fsDelete(c,id){return fbDb.collection(c).doc(id).delete().catch(function(e){console.error(e)})}
+function fsAdd(c,d){return fbDb.collection(c).add(d).then(function(r){return r.id}).catch(function(){return null})}
+
+// Firebase Storage upload
+function fbUploadImage(file,path){var ref=fbStorage.ref(path);return ref.put(file).then(function(){return ref.getDownloadURL()}).catch(function(){return null})}
+
+// Brevo Mail
+var BREVO_URL="https://script.google.com/macros/s/AKfycbwUNvVhTCvxUKOMtbFJ4_UASBo8-sgT13qT_9tWeYKZR3IYaYKUhGdSaGgGaaqMaZLf/exec";
+function brevoMail(to,n,s,h,r){try{fetch(BREVO_URL,{method:"POST",body:JSON.stringify({to:to,toName:n,subject:s,htmlContent:h,replyTo:r||""})})}catch(e){}}
+</script>
 <script type="text/babel">
 const{useState,useEffect,useRef}=React;
-
 const LOGO="data:image/png;base64,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";
+
+
+/* ═══ IMAGE UPLOADER ═══ */
+function ImageUploader({images,setImages}){
+  const[uploading,setUploading]=useState(false);
+  const fileRef=useRef();
+  const handleFiles=async(e)=>{
+    const files=Array.from(e.target.files);if(!files.length)return;
+    setUploading(true);
+    for(const file of files){
+      if(file.size>5*1024*1024){alert(file.name+" 5MB üzeri!");continue}
+      const path="etkinlikler/"+Date.now()+"_"+file.name;
+      const url=await fbUploadImage(file,path);
+      if(url)setImages(prev=>[...prev,url]);
+    }
+    setUploading(false);if(fileRef.current)fileRef.current.value="";
+  };
+  const remove=(i)=>setImages(images.filter((_,j)=>j!==i));
+  return(<div style={{background:"#f9fcf9",borderRadius:10,padding:14,border:"1px solid #dce8dc"}}>
+    <label style={{display:"block",fontSize:12,fontWeight:700,color:"#2e5339",marginBottom:4,fontFamily:"'Nunito',sans-serif"}}>📸 Görseller</label>
+    <p style={{fontFamily:"'Nunito',sans-serif",fontSize:10,color:"#888",margin:"2px 0 8px"}}>Kart: 600×400px | Detay: 1200×800px | Max 5MB</p>
+    <button onClick={()=>fileRef.current?.click()} disabled={uploading} style={{padding:"8px 16px",background:"linear-gradient(135deg,#2e5339,#4a7c59)",color:"#fff",border:"none",borderRadius:10,fontFamily:"'Nunito',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",opacity:uploading?0.6:1}}>
+      {uploading?"⏳ Yükleniyor...":"📁 Bilgisayardan Seç"}
+    </button>
+    <input ref={fileRef} type="file" accept="image/*" multiple style={{display:"none"}} onChange={handleFiles}/>
+    {images.length>0&&<div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:10}}>
+      {images.map((img,i)=>(<div key={i} style={{position:"relative",width:90,height:65,borderRadius:8,overflow:"hidden",border:"2px solid #dce8dc"}}>
+        <img src={img} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+        <button onClick={()=>remove(i)} style={{position:"absolute",top:2,right:2,width:18,height:18,borderRadius:"50%",background:"#e53935",color:"#fff",border:"none",fontSize:10,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+        {i===0&&<div style={{position:"absolute",bottom:0,left:0,right:0,background:"rgba(46,83,57,0.8)",color:"#fff",fontSize:8,textAlign:"center",padding:1}}>KAPAK</div>}
+      </div>))}
+    </div>}
+  </div>)}
+
+/* ═══ AUTH BAR ═══ */
+function AuthBar({user,onLogin,onLogout}){
+  return(<div style={{background:"rgba(0,0,0,0.15)",padding:"6px 20px",display:"flex",justifyContent:"flex-end",alignItems:"center",gap:10}}>
+    {user?(<>
+      <img src={user.photoURL||LOGO} alt="" style={{width:24,height:24,borderRadius:"50%"}}/>
+      <span style={{fontFamily:"'Nunito',sans-serif",fontSize:12,color:"rgba(255,255,255,0.9)",fontWeight:600}}>{user.displayName||user.email}</span>
+      <button onClick={onLogout} style={{background:"rgba(255,255,255,0.15)",border:"none",borderRadius:6,padding:"3px 10px",color:"rgba(255,255,255,0.8)",fontSize:11,cursor:"pointer",fontFamily:"'Nunito',sans-serif",fontWeight:600}}>Çıkış</button>
+    </>):(<>
+      <span style={{fontFamily:"'Nunito',sans-serif",fontSize:11,color:"rgba(255,255,255,0.6)"}}>Kayıt için giriş yapın</span>
+      <button onClick={onLogin} style={{background:"#fff",border:"none",borderRadius:6,padding:"4px 12px",color:"#2e5339",fontSize:12,cursor:"pointer",fontFamily:"'Nunito',sans-serif",fontWeight:700}}>Google ile Giriş</button>
+    </>)}
+  </div>)}
+
+
 
 /* ═══ CONFIG ═══ */
 const ADMIN_USER="3MRAHB4Y";
 const ADMIN_PASS="bf7oz3dk.BE";
 
 // EmailJS - Kendi bilgilerinizi girin
-// Brevo Mail Proxy (BCK_MailProxy - tüm okul siteleriyle ortak)
-const BREVO_PROXY_URL="https://script.google.com/macros/s/AKfycbwUNvVhTCvxUKOMtbFJ4_UASBo8-sgT13qT_9tWeYKZR3IYaYKUhGdSaGgGaaqMaZLf/exec";
-const SCHOOL_EMAIL="eposta@bircicekkoleji.com";
+const EMAILJS_PUBLIC_KEY="YOUR_PUBLIC_KEY";
+const EMAILJS_SERVICE_ID="YOUR_SERVICE_ID";
+const EMAILJS_TEMPLATE_USER="YOUR_USER_TEMPLATE_ID";
+const EMAILJS_TEMPLATE_ADMIN="YOUR_ADMIN_TEMPLATE_ID";
 
 const IBAN_INFO={
   bankName:"Banka Adı (Admin panelinden güncelleyin)",
@@ -77,95 +142,46 @@ const btnP={padding:"10px 24px",background:`linear-gradient(135deg,${G},${GL})`,
 const btnS={padding:"10px 20px",background:"transparent",border:`2px solid ${G}`,borderRadius:10,color:G,fontFamily:ff,fontWeight:700,fontSize:13,cursor:"pointer"};
 const crd={background:"#fff",borderRadius:14,padding:20,boxShadow:"0 2px 12px rgba(46,83,57,0.07)",marginBottom:16};
 
-/* ═══ BREVO MAIL ═══ */
-function brevoMail(to, toName, subject, htmlContent, replyTo){
-  try{
-    fetch(BREVO_PROXY_URL, {
-      method:"POST",
-      body:JSON.stringify({ to, toName, subject, htmlContent, replyTo: replyTo||"" })
-    }).then(r=>r.text()).then(t=>console.log("Brevo:",t)).catch(e=>console.log("Brevo err:",e));
-  }catch(e){console.log("Mail error:",e)}
-}
-
+/* ═══ EMAIL ═══ */
 function sendRegistrationEmails(event, reg, settings){
-  const parentName = reg.parent.name+" "+reg.parent.surname;
-  const childNames = reg.children.map(c=>c.name).join(", ");
-  const payLabel = reg.paymentMethod==="iban"?"Havale / EFT":reg.paymentMethod==="event"?"Etkinlik Günü Ödeme":"Ücretsiz";
-  const ibanBlock = (!event.isFree && reg.paymentMethod==="iban") ?
-    `<div style="background:#fff8e1;border-radius:10px;padding:14px 18px;margin:16px 0;border-left:4px solid #ff8f00">
-      <h3 style="margin:0 0 6px;color:#e65100;font-size:13px">Ödeme Bilgileri</h3>
-      <p style="font-size:12px;color:#555;margin:0;line-height:1.8">
-        <strong>Banka:</strong> ${settings.ibanBank}<br>
-        <strong>Hesap Sahibi:</strong> ${settings.ibanHolder}<br>
-        <strong>IBAN:</strong> <span style="font-family:monospace;font-weight:700;color:#2e5339">${settings.ibanNumber}</span><br>
-        <strong>Açıklama:</strong> ${event.title} - ${parentName}<br>
-        <strong>Tutar:</strong> ${event.fee} TL
-      </p>
-    </div>` : "";
-  const mapBlock = event.mapUrl ?
-    `<p style="text-align:center;margin:16px 0"><a href="${event.mapUrl}" style="background:#1565c0;color:white;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:14px">Yol Tarifi Al</a></p>` : "";
+  if(typeof emailjs==="undefined"){console.log("EmailJS not loaded - skipping emails");return}
+  // Kullanıcıya giden mail
+  try{
+    emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_USER, {
+      to_email: reg.parent.email,
+      to_name: reg.parent.name + " " + reg.parent.surname,
+      event_title: event.title,
+      event_date: fmtDate(event.date),
+      event_time: event.startTime + " - " + event.endTime,
+      event_location: event.location,
+      map_url: event.mapUrl || "",
+      child_name: reg.children.map(c=>c.name).join(", "),
+      is_paid: !event.isFree ? "Evet" : "Hayır",
+      fee: event.isFree ? "Ücretsiz" : event.fee + " TL",
+      payment_method: reg.paymentMethod === "iban" ? "Havale / EFT" : reg.paymentMethod === "event" ? "Etkinlik Günü" : "",
+      iban_info: !event.isFree && reg.paymentMethod === "iban" ? `${settings.ibanBank} - ${settings.ibanHolder} - ${settings.ibanNumber}` : "",
+      school_phone: "0216 393 54 57",
+    }, EMAILJS_PUBLIC_KEY);
+  }catch(e){console.log("User email error:",e)}
 
-  // 1) Veliye onay maili
-  const userHtml = `<div style="font-family:'Segoe UI',Arial,sans-serif;max-width:600px;margin:0 auto">
-    <div style="background:linear-gradient(135deg,#2e5339,#4a7c59);padding:28px 24px;text-align:center;border-radius:12px 12px 0 0">
-      <h1 style="color:white;margin:0;font-size:20px">Bir Çiçek Koleji Anaokulu</h1>
-      <p style="color:rgba(255,255,255,0.8);margin:6px 0 0;font-size:13px">Etkinlik Kayıt Onayı</p>
-    </div>
-    <div style="background:white;padding:24px 28px;border:1px solid #e0e0e0">
-      <p style="font-size:15px;color:#333">Sayın <strong>${parentName}</strong>,</p>
-      <p style="font-size:14px;color:#555;line-height:1.7"><strong style="color:#2e5339">${event.title}</strong> etkinliğine kaydınız başarıyla oluşturulmuştur!</p>
-      <div style="background:#f1f8f1;border-radius:10px;padding:16px 18px;margin:20px 0;border-left:4px solid #2e5339">
-        <table style="width:100%;font-size:13px;color:#444;border-collapse:collapse">
-          <tr><td style="padding:5px 0;width:100px;font-weight:bold">Tarih:</td><td>${fmtDate(event.date)}</td></tr>
-          <tr><td style="padding:5px 0;font-weight:bold">Saat:</td><td>${event.startTime} - ${event.endTime}</td></tr>
-          <tr><td style="padding:5px 0;font-weight:bold">Konum:</td><td>${event.location}</td></tr>
-          <tr><td style="padding:5px 0;font-weight:bold">Çocuk:</td><td>${childNames}</td></tr>
-          <tr><td style="padding:5px 0;font-weight:bold">Ücret:</td><td>${event.isFree?"Ücretsiz":event.fee+" TL"}</td></tr>
-          <tr><td style="padding:5px 0;font-weight:bold">Ödeme:</td><td>${payLabel}</td></tr>
-        </table>
-      </div>
-      ${ibanBlock}
-      ${mapBlock}
-      <p style="font-size:12px;color:#888;margin-top:16px;line-height:1.6">Sorularınız için: 0216 393 54 57 | eposta@bircicekkoleji.com</p>
-    </div>
-    <div style="background:#2e5339;padding:14px;text-align:center;border-radius:0 0 12px 12px">
-      <p style="color:rgba(255,255,255,0.5);font-size:10px;margin:0">© 2026 Bir Çiçek Koleji Anaokulu | Tuzla, İstanbul</p>
-    </div>
-  </div>`;
-
-  brevoMail(reg.parent.email, parentName, event.title+" - Kaydınız Alındı | Bir Çiçek Koleji", userHtml, SCHOOL_EMAIL);
-
-  // 2) Okula bildirim maili
-  const childrenDetail = reg.children.map(c=>`${c.name} ${c.surname} (${c.gender==="kiz"?"Kız":"Erkek"}, DT: ${c.birthDate}, Okul: ${c.currentSchool||"-"}, Özel: ${c.specialNeeds||"-"})`).join("<br>");
-  const adminHtml = `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
-    <div style="background:#2e5339;padding:18px;text-align:center;border-radius:10px 10px 0 0">
-      <h2 style="color:white;margin:0;font-size:18px">Yeni Etkinlik Kaydı</h2>
-    </div>
-    <div style="background:white;padding:20px;border:1px solid #ddd">
-      <h3 style="color:#2e5339;margin:0 0 14px">${event.title} — ${fmtDate(event.date)}</h3>
-      <table style="width:100%;font-size:13px;border-collapse:collapse">
-        <tr style="background:#f5f5f5"><td style="padding:8px;font-weight:bold" colspan="2">Ebeveyn</td></tr>
-        <tr><td style="padding:5px 8px;width:120px"><strong>Ad Soyad:</strong></td><td>${parentName}</td></tr>
-        <tr><td style="padding:5px 8px"><strong>Telefon:</strong></td><td>${reg.parent.phone}</td></tr>
-        <tr><td style="padding:5px 8px"><strong>E-posta:</strong></td><td>${reg.parent.email}</td></tr>
-        <tr><td style="padding:5px 8px"><strong>Adres:</strong></td><td>${reg.parent.address}, ${reg.parent.district}</td></tr>
-        <tr style="background:#f5f5f5"><td style="padding:8px;font-weight:bold" colspan="2">Çocuk(lar)</td></tr>
-        <tr><td style="padding:5px 8px" colspan="2">${childrenDetail}</td></tr>
-        <tr style="background:#f5f5f5"><td style="padding:8px;font-weight:bold" colspan="2">Detaylar</td></tr>
-        <tr><td style="padding:5px 8px"><strong>Kaynak:</strong></td><td>${reg.extra.heardFrom}</td></tr>
-        <tr><td style="padding:5px 8px"><strong>Allerji:</strong></td><td>${reg.extra.allergies||"Yok"}</td></tr>
-        <tr><td style="padding:5px 8px"><strong>Ödeme:</strong></td><td>${payLabel}</td></tr>
-        <tr><td style="padding:5px 8px"><strong>Acil:</strong></td><td>${reg.extra.emergencyName} - ${reg.extra.emergencyPhone}</td></tr>
-        <tr><td style="padding:5px 8px"><strong>Not:</strong></td><td>${reg.extra.notes||"Yok"}</td></tr>
-        <tr><td style="padding:5px 8px"><strong>Zaman:</strong></td><td>${new Date().toLocaleString("tr-TR")}</td></tr>
-      </table>
-    </div>
-    <div style="background:#eee;padding:10px;text-align:center;border-radius:0 0 10px 10px">
-      <p style="font-size:10px;color:#888;margin:0">etkinlikler.bircicekkoleji.com | otomatik bildirim</p>
-    </div>
-  </div>`;
-
-  brevoMail(SCHOOL_EMAIL, "Bir Çiçek Koleji", "Yeni Kayıt: "+event.title+" - "+parentName, adminHtml, reg.parent.email);
+  // Okula giden bildirim
+  try{
+    emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ADMIN, {
+      to_email: "eposta@bircicekkoleji.com",
+      parent_name: reg.parent.name + " " + reg.parent.surname,
+      parent_phone: reg.parent.phone,
+      parent_email: reg.parent.email,
+      parent_district: reg.parent.district,
+      event_title: event.title,
+      event_date: fmtDate(event.date),
+      children_info: reg.children.map(c=>`${c.name} ${c.surname} (${c.gender==="kiz"?"Kız":"Erkek"}, DT: ${c.birthDate})`).join(" | "),
+      heard_from: reg.extra.heardFrom,
+      allergies: reg.extra.allergies || "Yok",
+      notes: reg.extra.notes || "Yok",
+      payment_method: reg.paymentMethod === "iban" ? "Havale" : reg.paymentMethod === "event" ? "Etkinlik Günü" : "Ücretsiz",
+      timestamp: new Date().toLocaleString("tr-TR"),
+    }, EMAILJS_PUBLIC_KEY);
+  }catch(e){console.log("Admin email error:",e)}
 }
 
 /* ═══ COUNTDOWN ═══ */
@@ -204,10 +220,10 @@ const CT=`Etkinlik süresince çekilecek fotoğraf ve video kayıtlarının, Bir
 const MT=`Bir Çiçek Koleji Anaokulu tarafından eğitim ve etkinlik bilgilendirmeleri amacıyla iletişim kurulmasına izin veriyorum.`;
 const KT=`6698 sayılı KVKK kapsamında, kişisel verilerimin etkinlik organizasyonu amacıyla işlenmesine açık rıza veriyorum.`;
 
-function RegModal({event,onClose,onSubmit,settings}){
+function RegModal({event,onClose,onSubmit,settings,user}){
   const totalSteps=event.isFree?4:5;
   const[step,setStep]=useState(1);
-  const[p,setP]=useState({name:"",surname:"",phone:"",email:"",address:"",district:"",attendeeCount:"1"});
+  const[p,setP]=useState({name:user?.displayName?.split(" ")[0]||"",surname:user?.displayName?.split(" ").slice(1).join(" ")||"",phone:"",email:user?.email||"",address:"",district:"",attendeeCount:"1"});
   const[ch,setCh]=useState([emptyChild()]);
   const[ex,setEx]=useState({heardFrom:"",allergies:"",emergencyName:"",emergencyPhone:"",notes:""});
   const[co,setCo]=useState({photo:false,marketing:false,kvkk:false});
@@ -308,7 +324,7 @@ return(<div style={crd}><h3 style={{fontFamily:ffT,color:G,margin:"0 0 16px",fon
 <div><label style={lbl}>🎬 YouTube</label><input style={inp(false)} value={fm.youtubeUrl} onChange={e=>f("youtubeUrl",e.target.value)} placeholder="https://youtube.com/watch?v=..."/>{ytId&&<div style={{marginTop:8,borderRadius:8,overflow:"hidden",aspectRatio:"16/9",maxWidth:300}}><iframe src={`https://www.youtube.com/embed/${ytId}`} style={{width:"100%",height:"100%",border:"none"}} allowFullScreen/></div>}</div>
 <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}><button onClick={onCancel} style={btnS}>İptal</button><button onClick={save} style={btnP}>{event?"💾 Güncelle":"🌿 Oluştur"}</button></div></div></div>)}
 
-function EvMgr({events,setEvents}){const[ed,setEd]=useState(null);const save=(ev)=>{if(ed==="new")setEvents([...events,ev]);else setEvents(events.map(e=>e.id===ev.id?ev:e));setEd(null)};const del=(id)=>{if(confirm("Silmek istediğinize emin misiniz?"))setEvents(events.filter(e=>e.id!==id))};
+function EvMgr({events,setEvents}){const[ed,setEd]=useState(null);const save=async(ev)=>{await fsSave("etkinlikler",ev.id,ev);if(ed==="new")setEvents([...events,ev]);else setEvents(events.map(e=>e.id===ev.id?ev:e));setEd(null)};const del=async(id)=>{if(confirm("Silmek istediğinize emin misiniz?")){{await fsDelete("etkinlikler",id);setEvents(events.filter(e=>e.id!==id))}}};
 if(ed)return<EvForm event={ed==="new"?null:ed} onSave={save} onCancel={()=>setEd(null)}/>;
 return(<div><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}><h2 style={{fontFamily:ffT,color:"#1b3a26",margin:0,fontSize:24}}>📅 Etkinlikler</h2><button onClick={()=>setEd("new")} style={btnP}>+ Yeni</button></div>
 {events.map(ev=>{const tp=TL[ev.type]||TL.gezi;const st=SM[ev.status];return(<div key={ev.id} style={{...crd,display:"flex",alignItems:"center",gap:14}}><img src={ev.images?.[0]||"https://via.placeholder.com/70"} alt="" style={{width:60,height:60,borderRadius:10,objectFit:"cover",flexShrink:0}}/><div style={{flex:1,minWidth:0}}><div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4,flexWrap:"wrap"}}><span style={{fontFamily:ffT,fontWeight:800,fontSize:14,color:"#1b3a26"}}>{ev.title}</span><span style={{background:tp.bg,color:tp.color,padding:"2px 8px",borderRadius:10,fontSize:10,fontWeight:700,fontFamily:ff}}>{tp.label}</span><span style={{background:st?.bg,color:st?.color,padding:"2px 8px",borderRadius:10,fontSize:10,fontWeight:700,fontFamily:ff}}>{st?.label}</span>{!ev.isFree&&<span style={{background:"#fff3e0",color:"#e65100",padding:"2px 8px",borderRadius:10,fontSize:10,fontWeight:700,fontFamily:ff}}>₺{ev.fee}</span>}</div><div style={{fontFamily:ff,fontSize:11,color:"#888"}}>{fmtDate(ev.date)} • {ev.startTime}–{ev.endTime}</div></div><div style={{display:"flex",gap:6,flexShrink:0}}><button onClick={()=>setEd(ev)} style={{padding:"6px 12px",background:"#e8f5e9",border:"none",borderRadius:8,color:G,fontFamily:ff,fontWeight:700,fontSize:11,cursor:"pointer"}}>✏️</button><button onClick={()=>del(ev.id)} style={{padding:"6px 12px",background:"#ffebee",border:"none",borderRadius:8,color:"#c62828",fontFamily:ff,fontWeight:700,fontSize:11,cursor:"pointer"}}>🗑️</button></div></div>)})}</div>)}
@@ -325,7 +341,7 @@ return(<div><div style={{display:"flex",justifyContent:"space-between",alignItem
 <div style={{...crd,padding:"10px 14px",marginBottom:16,display:"flex",gap:20}}><span style={{fontFamily:ff,fontSize:13}}>Toplam: <strong style={{color:G}}>{all.length}</strong></span><span style={{fontFamily:ff,fontSize:13}}>Kız: <strong>{all.filter(c=>c.gender==="kiz").length}</strong></span><span style={{fontFamily:ff,fontSize:13}}>Erkek: <strong>{all.filter(c=>c.gender==="erkek").length}</strong></span></div>
 <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontFamily:ff,fontSize:12}}><thead><tr style={{background:G,color:"#fff"}}>{["Etkinlik","Çocuk","Yaş","Cinsiyet","Okul","Özel","Ebeveyn","Tel"].map(h=><th key={h} style={{padding:"8px 10px",textAlign:"left",fontWeight:700,fontSize:11}}>{h}</th>)}</tr></thead><tbody>{all.map((c,i)=>(<tr key={i} style={{background:i%2?"#f9fcf9":"#fff",borderBottom:"1px solid #e8f0e8"}}><td style={{padding:"8px 10px",fontWeight:700,color:G,maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.evN}</td><td style={{padding:"8px 10px",fontWeight:700}}>{c.name} {c.surname}</td><td style={{padding:"8px 10px",textAlign:"center"}}>{c.age}</td><td style={{padding:"8px 10px"}}>{c.gender==="kiz"?"👧":"👦"}</td><td style={{padding:"8px 10px"}}>{c.currentSchool||"—"}</td><td style={{padding:"8px 10px",color:c.specialNeeds?"#e65100":"#ccc"}}>{c.specialNeeds||"—"}</td><td style={{padding:"8px 10px"}}>{c.pN}</td><td style={{padding:"8px 10px"}}>{c.pP}</td></tr>))}</tbody></table></div></div>)}
 
-function SettingsPage({settings,setSettings}){const[fm,setFm]=useState({...settings});const[saved,setSaved]=useState(false);const f=(k,v)=>{setFm({...fm,[k]:v});setSaved(false)};const save=()=>{setSettings({...fm});setSaved(true);setTimeout(()=>setSaved(false),2000)};
+function SettingsPage({settings,setSettings}){const[fm,setFm]=useState({...settings});const[saved,setSaved]=useState(false);const f=(k,v)=>{setFm({...fm,[k]:v});setSaved(false)};const save=async()=>{setSettings({...fm});await fsSave("etkinlik_ayarlar","main",fm);setSaved(true);setTimeout(()=>setSaved(false),2000)};
 return(<div><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}><h2 style={{fontFamily:ffT,color:"#1b3a26",margin:0,fontSize:24}}>⚙️ Ayarlar</h2><div style={{display:"flex",gap:8}}>{saved&&<span style={{fontFamily:ff,fontSize:13,color:"#2e7d32",fontWeight:700,alignSelf:"center"}}>✅ Kaydedildi!</span>}<button onClick={save} style={{...btnP,fontSize:13}}>💾 Kaydet</button></div></div>
 <div style={{display:"grid",gap:16}}>
 <div style={crd}><h3 style={{fontFamily:ff,fontWeight:800,color:G,fontSize:14,margin:"0 0 14px"}}>🏷️ Hero Bölümü</h3><div style={{display:"grid",gap:12}}><div><label style={lbl}>Rozet Yazısı</label><input style={inp(false)} value={fm.badge} onChange={e=>f("badge",e.target.value)}/></div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}><div><label style={lbl}>Başlık 1</label><input style={inp(false)} value={fm.titleLine1} onChange={e=>f("titleLine1",e.target.value)}/></div><div><label style={lbl}>Başlık 2</label><input style={inp(false)} value={fm.titleLine2} onChange={e=>f("titleLine2",e.target.value)}/></div></div><div><label style={lbl}>Alt Yazı</label><textarea style={{...inp(false),minHeight:50,resize:"vertical"}} value={fm.subtitle} onChange={e=>f("subtitle",e.target.value)}/></div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12}}><div><label style={lbl}>Özellik 1</label><input style={inp(false)} value={fm.feat1} onChange={e=>f("feat1",e.target.value)}/></div><div><label style={lbl}>Özellik 2</label><input style={inp(false)} value={fm.feat2} onChange={e=>f("feat2",e.target.value)}/></div><div><label style={lbl}>Özellik 3</label><input style={inp(false)} value={fm.feat3} onChange={e=>f("feat3",e.target.value)}/></div></div></div></div>
@@ -334,25 +350,24 @@ return(<div><div style={{display:"flex",justifyContent:"space-between",alignItem
 </div></div>)}
 
 /* ═══ MAIN APP ═══ */
-/* ═══ LOCAL STORAGE ═══ */
-const LS_KEY="bck_etkinlik_";
-function lsGet(key,fallback){try{const d=localStorage.getItem(LS_KEY+key);return d?JSON.parse(d):fallback}catch(e){return fallback}}
-function lsSet(key,val){try{localStorage.setItem(LS_KEY+key,JSON.stringify(val))}catch(e){}}
-
 function App(){
+  const[fbUser,setFbUser]=useState(null);
+  const[loading,setLoading]=useState(true);
   const[view,setView]=useState("public");
   const[showLogin,setShowLogin]=useState(false);
   const[ap,setAp]=useState("dash");
-  const[events,setEvents]=useState(()=>lsGet("events",[]));
-  const[regs,setRegs]=useState(()=>lsGet("regs",[]));
-  const[settings,setSettings]=useState(()=>lsGet("settings",DEFAULT_SETTINGS));
+  const[events,setEvents]=useState(SE);
+  const[regs,setRegs]=useState(SR);
+  const[settings,setSettings]=useState(DEFAULT_SETTINGS);
   const[regEv,setRegEv]=useState(null);const[detEv,setDetEv]=useState(null);const[filter,setFilter]=useState("all");
   const[footerClicks,setFooterClicks]=useState(0);
 
-  // Değişiklikleri localStorage'a kaydet
-  useEffect(()=>lsSet("events",events),[events]);
-  useEffect(()=>lsSet("regs",regs),[regs]);
-  useEffect(()=>lsSet("settings",settings),[settings]);
+  // Firebase Auth
+  useEffect(()=>{const u=fbAuth.onAuthStateChanged(u=>{setFbUser(u)});return()=>u()},[]);
+  // Load from Firestore
+  useEffect(()=>{async function load(){try{const[e,r]=await Promise.all([fsLoad("etkinlikler"),fsLoad("etkinlik_kayitlari")]);setEvents(e);setRegs(r);const s=await fbDb.collection("etkinlik_ayarlar").doc("main").get();if(s.exists)setSettings({...DEFAULT_SETTINGS,...s.data()})}catch(e){console.error(e)}setLoading(false)}load()},[]); 
+  const googleLogin=async()=>{try{await fbAuth.signInWithPopup(fbGoogleProvider)}catch(e){if(e.code==="auth/popup-blocked")try{await fbAuth.signInWithRedirect(fbGoogleProvider)}catch(e2){}}};const googleLogout=()=>fbAuth.signOut();
+  const handleNewReg=async(reg)=>{const id=await fsAdd("etkinlik_kayitlari",reg);if(id)setRegs(p=>[...p,{...reg,_docId:id}])};
 
   const pubEvs=events.filter(e=>e.status==="published");
   const filEvs=filter==="all"?pubEvs:pubEvs.filter(e=>e.type===filter);
@@ -365,9 +380,12 @@ function App(){
     setTimeout(()=>setFooterClicks(0),3000);
   };
 
+  if(loading)return(<div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#f4f7f2"}}><div style={{textAlign:"center"}}><div className="spinner"/><p style={{fontFamily:ff,color:"#888",fontSize:13,marginTop:12}}>Yükleniyor...</p></div></div>);
   if(view==="public")return(
     <div style={{minHeight:"100vh",background:"#f4f7f2",fontFamily:ff}}>
-      <div style={{background:`linear-gradient(160deg,#1b3a26 0%,${G} 40%,${GL} 100%)`,padding:"40px 20px 32px",textAlign:"center",position:"relative",overflow:"hidden"}}>
+      <div style={{background:`linear-gradient(160deg,#1b3a26 0%,${G} 40%,${GL} 100%)`,position:"relative",overflow:"hidden"}}>
+        <AuthBar user={fbUser} onLogin={googleLogin} onLogout={googleLogout}/>
+        <div style={{padding:"32px 20px 28px",textAlign:"center",position:"relative"}}>
         <div style={{position:"absolute",inset:0,opacity:0.05,backgroundImage:`url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23fff'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/svg%3E")`}}/>
         <div style={{position:"relative",zIndex:1}}>
           <img src={LOGO} alt="Bir Çiçek Koleji" style={{width:64,height:64,borderRadius:"50%",border:"3px solid rgba(255,255,255,0.3)",display:"block",margin:"0 auto 12px",boxShadow:"0 4px 16px rgba(0,0,0,0.2)"}}/>
@@ -376,6 +394,7 @@ function App(){
           <p style={{color:"rgba(255,255,255,0.8)",fontSize:14,maxWidth:500,margin:"0 auto 16px",lineHeight:1.6}}>{S.subtitle}</p>
           <div style={{display:"flex",justifyContent:"center",gap:14,flexWrap:"wrap",fontSize:12,fontWeight:700,color:"rgba(255,255,255,0.7)"}}><span>{S.feat1}</span><span>{S.feat2}</span><span>{S.feat3}</span></div>
         </div>
+      </div>
       </div>
       <div style={{maxWidth:960,margin:"0 auto",padding:"20px 16px 0",display:"flex",gap:6,flexWrap:"wrap",justifyContent:"center"}}>{[{k:"all",l:"Tümü"},...Object.entries(TL).map(([k,v])=>({k,l:`${v.icon} ${v.label}`}))].map(f=>(<button key={f.k} onClick={()=>setFilter(f.k)} style={{padding:"7px 16px",background:filter===f.k?G:"#fff",color:filter===f.k?"#fff":"#555",border:filter===f.k?"none":"1px solid #ddd",borderRadius:18,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:ff}}>{f.l}</button>))}</div>
       <div style={{maxWidth:960,margin:"0 auto",padding:"20px 16px 40px",display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(270px,1fr))",gap:20}}>{filEvs.map(ev=><PubCard key={ev.id} ev={ev} regs={regs} onReg={setRegEv} onDet={setDetEv}/>)}{!filEvs.length&&<div style={{gridColumn:"1/-1",textAlign:"center",padding:40,color:"#999"}}>Bu kategoride etkinlik yok.</div>}</div>
@@ -391,7 +410,7 @@ function App(){
         </div>
       </div>
 
-      {regEv&&<RegModal event={regEv} onClose={()=>setRegEv(null)} onSubmit={r=>setRegs([...regs,r])} settings={settings}/>}
+      {regEv&&<RegModal event={regEv} onClose={()=>setRegEv(null)} onSubmit={handleNewReg} settings={settings} user={fbUser}/>}
       {detEv&&<DetModal ev={detEv} regs={regs} onClose={()=>setDetEv(null)} onReg={setRegEv}/>}
       {showLogin&&<LoginModal onLogin={()=>{setShowLogin(false);setView("admin")}} onClose={()=>setShowLogin(false)}/>}
     </div>);
@@ -406,6 +425,7 @@ function App(){
       {ap==="settings"&&<SettingsPage settings={settings} setSettings={setSettings}/>}
     </div>
   </div>)}
+
 
 ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
 </script>
