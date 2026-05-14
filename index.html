@@ -334,15 +334,25 @@ return(<div><div style={{display:"flex",justifyContent:"space-between",alignItem
 </div></div>)}
 
 /* ═══ MAIN APP ═══ */
+/* ═══ LOCAL STORAGE ═══ */
+const LS_KEY="bck_etkinlik_";
+function lsGet(key,fallback){try{const d=localStorage.getItem(LS_KEY+key);return d?JSON.parse(d):fallback}catch(e){return fallback}}
+function lsSet(key,val){try{localStorage.setItem(LS_KEY+key,JSON.stringify(val))}catch(e){}}
+
 function App(){
   const[view,setView]=useState("public");
   const[showLogin,setShowLogin]=useState(false);
   const[ap,setAp]=useState("dash");
-  const[events,setEvents]=useState(SE);
-  const[regs,setRegs]=useState(SR);
-  const[settings,setSettings]=useState(DEFAULT_SETTINGS);
+  const[events,setEvents]=useState(()=>lsGet("events",[]));
+  const[regs,setRegs]=useState(()=>lsGet("regs",[]));
+  const[settings,setSettings]=useState(()=>lsGet("settings",DEFAULT_SETTINGS));
   const[regEv,setRegEv]=useState(null);const[detEv,setDetEv]=useState(null);const[filter,setFilter]=useState("all");
   const[footerClicks,setFooterClicks]=useState(0);
+
+  // Değişiklikleri localStorage'a kaydet
+  useEffect(()=>lsSet("events",events),[events]);
+  useEffect(()=>lsSet("regs",regs),[regs]);
+  useEffect(()=>lsSet("settings",settings),[settings]);
 
   const pubEvs=events.filter(e=>e.status==="published");
   const filEvs=filter==="all"?pubEvs:pubEvs.filter(e=>e.type===filter);
