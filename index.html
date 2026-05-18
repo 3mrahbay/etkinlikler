@@ -632,7 +632,7 @@ return(<div><div style={{display:"flex",justifyContent:"space-between",alignItem
 function App(){
 const[fbUser,setFbUser]=useState(null);
 const[loading,setLoading]=useState(true);
-const[view,setView]=useState("public");
+const[view,setView]=useState(typeof window!=="undefined"&&new URLSearchParams(window.location.search).get("admin")==="true"?"admin":"public");
 const[ap,setAp]=useState("dash");
 const[events,setEvents]=useState([]);
 const[regs,setRegs]=useState([]);
@@ -748,6 +748,10 @@ setTimeout(()=>setFooterClicks(0),3000);
 };
 
 if(loading)return(<div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#f4f7f2"}}><div style={{textAlign:"center"}}><div className="spinner"/><p style={{fontFamily:ff,color:"#888",fontSize:13,marginTop:12}}>Yükleniyor...</p></div></div>);
+
+// 🆕 Admin moduna girerken: önce giriş, sonra yetki kontrolü
+if(view==="admin"&&!fbUser)return(<div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#f4f7f2",padding:20}}><div style={{background:"#fff",borderRadius:20,padding:"36px 28px",maxWidth:420,width:"100%",textAlign:"center",boxShadow:"0 20px 60px rgba(0,0,0,0.1)"}}><div style={{width:64,height:64,margin:"0 auto 14px",background:`linear-gradient(135deg,${G},${GL})`,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:32}}>🔐</div><h2 style={{fontFamily:ffT,color:G,margin:"0 0 8px",fontSize:20}}>Admin Girişi Gerekli</h2><p style={{fontFamily:ff,color:"#666",fontSize:13,lineHeight:1.6,margin:"0 0 20px"}}>Etkinlik Yönetim Modülüne erişmek için Google hesabınızla giriş yapınız.</p><button onClick={googleLogin} style={{...btnP,width:"100%",padding:"12px 24px",marginBottom:8}}>Google ile Giriş Yap</button><button onClick={()=>{setView("public");window.history.replaceState({},"",window.location.pathname)}} style={{...btnS,width:"100%",borderColor:"#ccc",color:"#666"}}>Anasayfaya Dön</button></div></div>);
+if(view==="admin"&&fbUser&&!isAdmin)return(<div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#f4f7f2",padding:20}}><div style={{background:"#fff",borderRadius:20,padding:"36px 28px",maxWidth:420,width:"100%",textAlign:"center",boxShadow:"0 20px 60px rgba(0,0,0,0.1)"}}><div style={{width:64,height:64,margin:"0 auto 14px",background:"#fef3c7",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:32}}>⚠️</div><h2 style={{fontFamily:ffT,color:"#92400e",margin:"0 0 8px",fontSize:20}}>Erişim Yetkiniz Yok</h2><p style={{fontFamily:ff,color:"#666",fontSize:13,lineHeight:1.6,margin:"0 0 6px"}}>Giriş yapılan hesap: <strong>{fbUser.email}</strong></p><p style={{fontFamily:ff,color:"#666",fontSize:13,lineHeight:1.6,margin:"0 0 20px"}}>Admin paneli sadece <strong>{ADMIN_EMAIL}</strong> hesabıyla erişilebilir.</p><button onClick={()=>{setView("public");window.history.replaceState({},"",window.location.pathname)}} style={{...btnP,width:"100%",padding:"12px 24px",marginBottom:8}}>Anasayfaya Dön</button><button onClick={googleLogout} style={{...btnS,width:"100%",borderColor:"#ccc",color:"#666"}}>Çıkış Yap (Farklı Hesapla Gir)</button></div></div>);
 
 if(view==="public")return(
 <div style={{minHeight:"100vh",background:"#f4f7f2",fontFamily:ff}}>
