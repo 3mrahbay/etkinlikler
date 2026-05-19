@@ -649,13 +649,26 @@ const[isVeli,setIsVeli]=useState(false);
 // Firebase Auth listener
 useEffect(()=>{const u=fbAuth.onAuthStateChanged(u=>{setFbUser(u)});return()=>u()},[]);
 
-// Veriyi yükle
-useEffect(()=>{async function load(){try{
-const[e,r]=await Promise.all([fsLoad("etkinlikler"),fsLoad("etkinlik_kayitlari")]);
-setEvents(e);setRegs(r);
-const s=await fbDb.collection("etkinlik_ayarlar").doc("main").get();
-if(s.exists)setSettings({...DEFAULT_SETTINGS,...s.data()})
-}catch(e){console.error(e)}setLoading(false)}load()},[]);
+// Veriyi yükle - CANLI DİNLEME (onSnapshot) - tüm kullanıcılar anlık güncel veri görür
+useEffect(()=>{
+const unsubEvents=fbDb.collection("etkinlikler").onSnapshot(snap=>{
+  const data=snap.docs.map(d=>{const o=d.data();o._docId=d.id;return o});
+  setEvents(data);
+  setLoading(false);
+},err=>{console.error("Etkinlik dinleme hatası:",err);setLoading(false)});
+
+const unsubRegs=fbDb.collection("etkinlik_kayitlari").onSnapshot(snap=>{
+  const data=snap.docs.map(d=>{const o=d.data();o._docId=d.id;return o});
+  setRegs(data);
+},err=>{console.error("Kayıt dinleme hatası:",err)});
+
+// Ayarlar bir kere yüklensin yeter
+fbDb.collection("etkinlik_ayarlar").doc("main").get().then(s=>{
+  if(s.exists)setSettings({...DEFAULT_SETTINGS,...s.data()})
+}).catch(e=>console.error(e));
+
+return()=>{unsubEvents();unsubRegs()};
+},[]);
 
 // Profil yükle
 useEffect(()=>{if(!fbUser)return;async function lp(){try{const d=await fbDb.collection("etkinlik_profiller").doc(fbUser.email).get();if(d.exists)setProfile(d.data())}catch(e){}}lp()},[fbUser]);
@@ -687,13 +700,8 @@ const handleNewReg=async(reg)=>{
 const id=await fsAdd("etkinlik_kayitlari",reg);
 if(id)setRegs(p=>[...p,{...reg,_docId:id}]);
 
-// 🆕 Etkinliğin filledSpots'unu güncelle
-const ev=events.find(e=>e.id===reg.eventId);
-if(ev&&ev._docId){
-  const yeniFilledSpots=(ev.filledSpots||0)+(reg.totalAttendees||1);
-  await fsSave("etkinlikler",ev._docId,{filledSpots:yeniFilledSpots});
-  setEvents(prev=>prev.map(e=>e.id===reg.eventId?{...e,filledSpots:yeniFilledSpots}:e));
-}
+// Not: filledSpots manuel sayım kullanmıyoruz - PubCard her zaman gerçek kayıtlardan canlı hesaplıyor
+// Bu yöntem daha güvenilir, manipülasyon riski yok
 
 // Profil otomatik güncelle
 if(fbUser&&reg.parent){
