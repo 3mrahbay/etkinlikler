@@ -277,14 +277,23 @@ Google ile Giriş Yap
 /* ═══ 🆕 PUBLIC CARD (BUG FIX + AUDIENCE) ═══ */
 function PubCard({ev,regs,onReg,onDet,isVeli}){
 const tp=TL[ev.type]||TL.gezi;
-// 🆕 BUG FIX: Her form değil, gerçek toplam katılımcı sayısı
+// 🆕 Kapasite hesaplama - önce filledSpots (public okuma için), yoksa hesapla (admin için)
 const evRegs=regs.filter(r=>r.eventId===ev.id);
-const rc=evRegs.reduce((sum,r)=>{
-  if(typeof r.totalAttendees==="number")return sum+r.totalAttendees;
-  const yet=parseInt(r.parent?.attendeeCount)||1;
-  const coc=(r.children||[]).length;
-  return sum+yet+coc;
-},0);
+let rc;
+if(typeof ev.filledSpots==="number"&&ev.filledSpots>0){
+  // filledSpots varsa onu kullan - herkes okuyabilir
+  rc=ev.filledSpots;
+}else if(evRegs.length>0){
+  // Admin için gerçek hesaplama (filledSpots boşsa veya 0 ise ve kayıt verisi okunabiliyorsa)
+  rc=evRegs.reduce((sum,r)=>{
+    if(typeof r.totalAttendees==="number")return sum+r.totalAttendees;
+    const yet=parseInt(r.parent?.attendeeCount)||1;
+    const coc=(r.children||[]).length;
+    return sum+yet+coc;
+  },0);
+}else{
+  rc=0;
+}
 const pct=ev.capacity>0?Math.round((rc/ev.capacity)*100):0;
 const d=new Date(ev.date);
 const img=ev.images?.[0]||"https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=600&h=400&fit=crop";
@@ -331,12 +340,20 @@ return(<div style={{background:"#fff",borderRadius:16,overflow:"hidden",boxShado
 /* ═══ DETAIL MODAL ═══ */
 function DetModal({ev,regs,onClose,onReg}){
 const evRegs=regs.filter(r=>r.eventId===ev.id);
-const rc=evRegs.reduce((sum,r)=>{
-  if(typeof r.totalAttendees==="number")return sum+r.totalAttendees;
-  const yet=parseInt(r.parent?.attendeeCount)||1;
-  const coc=(r.children||[]).length;
-  return sum+yet+coc;
-},0);
+// 🆕 filledSpots önce, sonra hesaplama
+let rc;
+if(typeof ev.filledSpots==="number"&&ev.filledSpots>0){
+  rc=ev.filledSpots;
+}else if(evRegs.length>0){
+  rc=evRegs.reduce((sum,r)=>{
+    if(typeof r.totalAttendees==="number")return sum+r.totalAttendees;
+    const yet=parseInt(r.parent?.attendeeCount)||1;
+    const coc=(r.children||[]).length;
+    return sum+yet+coc;
+  },0);
+}else{
+  rc=0;
+}
 const ytId=ev.youtubeUrl?.match(/(?:v=|\/)([\w-]{11})/)?.[1];
 const audience=ev.audience||"bircicekli";
 
@@ -649,7 +666,8 @@ const[isVeli,setIsVeli]=useState(false);
 // Firebase Auth listener
 useEffect(()=>{const u=fbAuth.onAuthStateChanged(u=>{setFbUser(u)});return()=>u()},[]);
 
-// Veriyi yükle - CANLI DİNLEME (onSnapshot) - tüm kullanıcılar anlık güncel veri görür
+// Veriyi yükle - CANLI DİNLEME (onSnapshot)
+// Etkinlikler herkese açık, kayıtlar sadece admin için
 useEffect(()=>{
 const unsubEvents=fbDb.collection("etkinlikler").onSnapshot(snap=>{
   const data=snap.docs.map(d=>{const o=d.data();o._docId=d.id;return o});
@@ -657,17 +675,29 @@ const unsubEvents=fbDb.collection("etkinlikler").onSnapshot(snap=>{
   setLoading(false);
 },err=>{console.error("Etkinlik dinleme hatası:",err);setLoading(false)});
 
-const unsubRegs=fbDb.collection("etkinlik_kayitlari").onSnapshot(snap=>{
-  const data=snap.docs.map(d=>{const o=d.data();o._docId=d.id;return o});
-  setRegs(data);
-},err=>{console.error("Kayıt dinleme hatası:",err)});
+// Kayıtları sadece admin için dinle (Firestore Rules zaten engelliyor ama gereksiz hata vermesin)
+let unsubRegs=null;
+const adminEmail="emrahby@gmail.com";
+const checkAuth=fbAuth.onAuthStateChanged(u=>{
+  if(u&&u.email===adminEmail){
+    if(!unsubRegs){
+      unsubRegs=fbDb.collection("etkinlik_kayitlari").onSnapshot(snap=>{
+        const data=snap.docs.map(d=>{const o=d.data();o._docId=d.id;return o});
+        setRegs(data);
+      },err=>{console.error("Kayıt dinleme hatası:",err)});
+    }
+  }else{
+    if(unsubRegs){unsubRegs();unsubRegs=null}
+    setRegs([]);
+  }
+});
 
 // Ayarlar bir kere yüklensin yeter
 fbDb.collection("etkinlik_ayarlar").doc("main").get().then(s=>{
   if(s.exists)setSettings({...DEFAULT_SETTINGS,...s.data()})
 }).catch(e=>console.error(e));
 
-return()=>{unsubEvents();unsubRegs()};
+return()=>{unsubEvents();if(unsubRegs)unsubRegs();checkAuth()};
 },[]);
 
 // Profil yükle
@@ -695,13 +725,22 @@ alert("Bu domain Firebase'de yetkili değil. Firebase Console > Authentication >
 };
 const googleLogout=()=>fbAuth.signOut();
 
-// 🆕 Yeni kayıt - filledSpots da güncelle
+// 🆕 Yeni kayıt - filledSpots'u atomik olarak artır (public sayım için)
 const handleNewReg=async(reg)=>{
 const id=await fsAdd("etkinlik_kayitlari",reg);
 if(id)setRegs(p=>[...p,{...reg,_docId:id}]);
 
-// Not: filledSpots manuel sayım kullanmıyoruz - PubCard her zaman gerçek kayıtlardan canlı hesaplıyor
-// Bu yöntem daha güvenilir, manipülasyon riski yok
+// 🆕 Etkinliğin filledSpots'unu atomik artır - giriş yapmamış kullanıcılar da bu sayıyı görebilir
+const ev=events.find(e=>e.id===reg.eventId);
+if(ev&&ev._docId){
+  const artisAmount=reg.totalAttendees||1;
+  try{
+    await fbDb.collection("etkinlikler").doc(ev._docId).update({
+      filledSpots:firebase.firestore.FieldValue.increment(artisAmount)
+    });
+    // onSnapshot zaten otomatik güncelleyecek, manuel setEvents'e gerek yok
+  }catch(e){console.error("filledSpots güncelleme hatası:",e)}
+}
 
 // Profil otomatik güncelle
 if(fbUser&&reg.parent){
