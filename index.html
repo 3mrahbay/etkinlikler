@@ -545,13 +545,13 @@ return(<div style={crd}><h3 style={{fontFamily:ffT,color:G,margin:"0 0 16px",fon
 <div><label style={lbl}>🎬 YouTube</label><input style={inp(false)} value={fm.youtubeUrl} onChange={e=>f("youtubeUrl",e.target.value)} placeholder="https://youtube.com/watch?v=..."/>{ytId&&<div style={{marginTop:8,borderRadius:8,overflow:"hidden",aspectRatio:"16/9",maxWidth:300}}><iframe src={`https://www.youtube.com/embed/${ytId}`} style={{width:"100%",height:"100%",border:"none"}} allowFullScreen/></div>}</div>
 <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}><button onClick={onCancel} style={btnS}>İptal</button><button onClick={save} style={btnP}>{event?"💾 Güncelle":"🌿 Oluştur"}</button></div></div></div>)}
 
-function EvMgr({events,setEvents}){const[ed,setEd]=useState(null);const save=async(ev)=>{await fsSave("etkinlikler",ev.id,ev);if(ed==="new")setEvents([...events,ev]);else setEvents(events.map(e=>e.id===ev.id?ev:e));setEd(null)};const del=async(id)=>{if(confirm("Silmek istediğinize emin misiniz?")){await fsDelete("etkinlikler",id);setEvents(events.filter(e=>e.id!==id))}};
+function EvMgr({events,setEvents}){const[ed,setEd]=useState(null);const save=async(ev)=>{const docId=ev._docId||ev.id;await fsSave("etkinlikler",docId,ev);if(ed==="new")setEvents([...events,{...ev,_docId:docId}]);else setEvents(events.map(e=>e.id===ev.id?{...ev,_docId:docId}:e));setEd(null)};const del=async(ev)=>{if(confirm("Silmek istediğinize emin misiniz?")){const docId=ev._docId||ev.id;await fsDelete("etkinlikler",docId);setEvents(events.filter(e=>e.id!==ev.id))}};
 if(ed)return<EvForm event={ed==="new"?null:ed} onSave={save} onCancel={()=>setEd(null)}/>;
 return(<div><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}><h2 style={{fontFamily:ffT,color:"#1b3a26",margin:0,fontSize:24}}>📅 Etkinlikler</h2><button onClick={()=>setEd("new")} style={btnP}>+ Yeni</button></div>
 {events.map(ev=>{const tp=TL[ev.type]||TL.gezi;const st=SM[ev.status];const aud=ev.audience||"bircicekli";return(<div key={ev.id} style={{...crd,display:"flex",alignItems:"center",gap:14}}><img src={ev.images?.[0]||"https://via.placeholder.com/70"} alt="" style={{width:60,height:60,borderRadius:10,objectFit:"cover",flexShrink:0}}/><div style={{flex:1,minWidth:0}}><div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4,flexWrap:"wrap"}}><span style={{fontFamily:ffT,fontWeight:800,fontSize:14,color:"#1b3a26"}}>{ev.title}</span><span style={{background:tp.bg,color:tp.color,padding:"2px 8px",borderRadius:10,fontSize:10,fontWeight:700,fontFamily:ff}}>{tp.label}</span>
 {/* 🆕 Audience rozeti */}
 <span style={{background:aud==="public"?"#fef3c7":"#e8f5e9",color:aud==="public"?"#78350f":"#2e5339",padding:"2px 8px",borderRadius:10,fontSize:10,fontWeight:700,fontFamily:ff}}>{aud==="public"?"🌍 Herkese":"🌷 Bir Çiçek"}</span>
-<span style={{background:st?.bg,color:st?.color,padding:"2px 8px",borderRadius:10,fontSize:10,fontWeight:700,fontFamily:ff}}>{st?.label}</span>{!ev.isFree&&<span style={{background:"#fff3e0",color:"#e65100",padding:"2px 8px",borderRadius:10,fontSize:10,fontWeight:700,fontFamily:ff}}>₺{ev.fee}</span>}</div><div style={{fontFamily:ff,fontSize:11,color:"#888"}}>{fmtDate(ev.date)} • {ev.startTime}–{ev.endTime}</div></div><div style={{display:"flex",gap:6,flexShrink:0}}><button onClick={()=>setEd(ev)} style={{padding:"6px 12px",background:"#e8f5e9",border:"none",borderRadius:8,color:G,fontFamily:ff,fontWeight:700,fontSize:11,cursor:"pointer"}}>✏️</button><button onClick={()=>del(ev.id)} style={{padding:"6px 12px",background:"#ffebee",border:"none",borderRadius:8,color:"#c62828",fontFamily:ff,fontWeight:700,fontSize:11,cursor:"pointer"}}>🗑️</button></div></div>)})}</div>)}
+<span style={{background:st?.bg,color:st?.color,padding:"2px 8px",borderRadius:10,fontSize:10,fontWeight:700,fontFamily:ff}}>{st?.label}</span>{!ev.isFree&&<span style={{background:"#fff3e0",color:"#e65100",padding:"2px 8px",borderRadius:10,fontSize:10,fontWeight:700,fontFamily:ff}}>₺{ev.fee}</span>}</div><div style={{fontFamily:ff,fontSize:11,color:"#888"}}>{fmtDate(ev.date)} • {ev.startTime}–{ev.endTime}</div></div><div style={{display:"flex",gap:6,flexShrink:0}}><button onClick={()=>setEd(ev)} style={{padding:"6px 12px",background:"#e8f5e9",border:"none",borderRadius:8,color:G,fontFamily:ff,fontWeight:700,fontSize:11,cursor:"pointer"}}>✏️</button><button onClick={()=>del(ev)} style={{padding:"6px 12px",background:"#ffebee",border:"none",borderRadius:8,color:"#c62828",fontFamily:ff,fontWeight:700,fontSize:11,cursor:"pointer"}}>🗑️</button></div></div>)})}</div>)}
 
 function RegReport({events,regs}){
 const[fe,setFe]=useState("all");
@@ -644,7 +644,6 @@ const[detEv,setDetEv]=useState(null);
 const[filter,setFilter]=useState("all");
 const[audienceFilter,setAudienceFilter]=useState("all"); // 🆕
 const[loginRequired,setLoginRequired]=useState(null); // 🆕
-const[footerClicks,setFooterClicks]=useState(0);
 const[isVeli,setIsVeli]=useState(false);
 
 // Firebase Auth listener
@@ -735,18 +734,6 @@ if(audienceFilter!=="all")filEvs=filEvs.filter(e=>(e.audience||"bircicekli")===a
 const S=settings;
 const isAdmin=fbUser&&fbUser.email===ADMIN_EMAIL;
 
-const handleFooterClick=()=>{
-const c=footerClicks+1;
-setFooterClicks(c);
-if(c>=5){
-setFooterClicks(0);
-if(isAdmin){setView("admin")}
-else if(fbUser){alert("Bu hesapta admin yetkisi yok.")}
-else{googleLogin()}
-}
-setTimeout(()=>setFooterClicks(0),3000);
-};
-
 if(loading)return(<div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#f4f7f2"}}><div style={{textAlign:"center"}}><div className="spinner"/><p style={{fontFamily:ff,color:"#888",fontSize:13,marginTop:12}}>Yükleniyor...</p></div></div>);
 
 // 🆕 Admin moduna girerken: önce giriş, sonra yetki kontrolü
@@ -807,7 +794,7 @@ if(view==="public")return(
 <p style={{color:"rgba(255,255,255,0.7)",fontSize:13,margin:"0 auto 12px",maxWidth:460}}>{S.footerSubtitle}</p>
 <div style={{display:"flex",justifyContent:"center",gap:14,flexWrap:"wrap",fontSize:12,color:"rgba(255,255,255,0.6)",marginBottom:16}}><span>{S.phone1}</span><span>{S.phone2}</span><span>{S.email}</span></div>
 <div style={{borderTop:"1px solid rgba(255,255,255,0.1)",paddingTop:12}}>
-<img src={LOGO} alt="" onClick={handleFooterClick} style={{width:28,height:28,borderRadius:"50%",opacity:0.3,cursor:"default",marginBottom:4,transition:"opacity 0.2s"}}/>
+<img src={LOGO} alt="Bir Çiçek Koleji" style={{width:36,height:36,borderRadius:"50%",opacity:1,marginBottom:6,border:"2px solid rgba(255,255,255,0.2)"}}/>
 <div style={{fontSize:10,color:"rgba(255,255,255,0.25)",fontFamily:ff}}>© 2026 Bir Çiçek Koleji Anaokulu</div>
 </div>
 </div>
