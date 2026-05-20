@@ -572,16 +572,173 @@ return(<div><div style={{display:"flex",justifyContent:"space-between",alignItem
 
 function RegReport({events,regs}){
 const[fe,setFe]=useState("all");
+const[selected,setSelected]=useState(new Set()); // 🆕 Seçili kayıtlar
+const[busy,setBusy]=useState(false); // 🆕 Silme işlemi sürüyor mu
+const[toast,setToast]=useState(""); // 🆕 Bildirim
 const fil=regs.filter(r=>fe==="all"||r.eventId===fe);
+
+const showToast=(msg)=>{setToast(msg);setTimeout(()=>setToast(""),3500)};
+
+// 🆕 Seçim yardımcıları
+const toggleSelect=(docId)=>{
+  const newSel=new Set(selected);
+  if(newSel.has(docId))newSel.delete(docId);else newSel.add(docId);
+  setSelected(newSel);
+};
+const toggleSelectAll=()=>{
+  if(selected.size===fil.length){setSelected(new Set())}
+  else{setSelected(new Set(fil.map(r=>r._docId).filter(Boolean)))}
+};
+
+// 🆕 Veliye iptal maili gönder
+const sendCancelMail=(reg,ev)=>{
+  const pn=reg.parent.name+" "+reg.parent.surname;
+  const html=`<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto"><div style="background:linear-gradient(135deg,#c62828,#e53935);padding:24px;text-align:center;border-radius:12px 12px 0 0"><h1 style="color:white;margin:0;font-size:20px">Etkinlik Kaydınız İptal Edildi</h1></div><div style="background:white;padding:24px;border:1px solid #e0e0e0"><p style="font-size:15px;color:#333">Sayın <strong>${pn}</strong>,</p><p style="font-size:14px;color:#555;line-height:1.7"><strong style="color:#c62828">${ev?.title||"Etkinlik"}</strong> etkinliği için yapmış olduğunuz kayıt okul yönetimi tarafından iptal edilmiştir.</p><div style="background:#fff8e1;border-radius:10px;padding:14px;margin:16px 0;border-left:4px solid #ff8f00"><p style="font-size:13px;color:#555;margin:0;line-height:1.7">Bu konuda detaylı bilgi almak veya sorularınızı iletmek için aşağıdaki iletişim kanallarımızı kullanabilirsiniz:</p></div><p style="font-size:13px;color:#666;margin-top:16px"><strong>📞 Telefon:</strong> 0216 393 54 57<br><strong>📧 E-posta:</strong> eposta@bircicekkoleji.com</p><p style="font-size:12px;color:#888;margin-top:16px;font-style:italic">Anlayışınız için teşekkür ederiz.</p></div><div style="background:#2e5339;padding:12px;text-align:center;border-radius:0 0 12px 12px"><p style="color:rgba(255,255,255,0.5);font-size:10px;margin:0">© 2026 Bir Çiçek Koleji Anaokulu</p></div></div>`;
+  brevoMail(reg.parent.email,pn,(ev?.title||"Etkinlik")+" - Kaydınız İptal Edildi | Bir Çiçek Koleji",html,"eposta@bircicekkoleji.com");
+};
+
+// 🆕 Tek kayıt silme
+const delOne=async(reg)=>{
+  const ev=events.find(e=>e.id===reg.eventId);
+  const pn=reg.parent.name+" "+reg.parent.surname;
+  const kati=typeof reg.totalAttendees==="number"?reg.totalAttendees:(parseInt(reg.parent?.attendeeCount)||1)+(reg.children?.length||0);
+  if(!confirm(`Bu kaydı silmek istiyor musun?\n\n👤 ${pn}\n📅 ${ev?.title||"?"}\n👥 ${kati} katılımcı\n\nBu işlem geri alınamaz!`))return;
+  const sendMail=confirm(`Veliye iptal bildirimi mail'i gönderilsin mi?\n\n📧 ${reg.parent.email}\n\n• Evet → İptal maili gönder\n• İptal → Sessizce sil (mail yok)`);
+  setBusy(true);
+  try{
+    // Kayıt sil
+    await fsDelete("etkinlik_kayitlari",reg._docId||reg.id);
+    // filledSpots'u azalt (atomik)
+    if(ev&&ev._docId){
+      await fbDb.collection("etkinlikler").doc(ev._docId).update({
+        filledSpots:firebase.firestore.FieldValue.increment(-kati)
+      });
+    }
+    if(sendMail)sendCancelMail(reg,ev);
+    showToast(`✅ Kayıt silindi${sendMail?" + iptal maili gönderildi":""}`);
+  }catch(e){
+    console.error(e);
+    showToast("❌ Silme hatası: "+e.message);
+  }
+  setBusy(false);
+};
+
+// 🆕 Seçili kayıtları sil
+const delSelected=async()=>{
+  if(!selected.size)return;
+  if(!confirm(`${selected.size} kayıt silinecek. Emin misin?\n\nBu işlem geri alınamaz!`))return;
+  const sendMail=confirm(`${selected.size} veliye iptal bildirimi mail'i gönderilsin mi?\n\n• Evet → Her birine iptal maili gönder\n• İptal → Sessizce sil (mail yok)`);
+  setBusy(true);
+  let ok=0;
+  for(const docId of selected){
+    const reg=regs.find(r=>r._docId===docId);
+    if(!reg)continue;
+    try{
+      const ev=events.find(e=>e.id===reg.eventId);
+      const kati=typeof reg.totalAttendees==="number"?reg.totalAttendees:(parseInt(reg.parent?.attendeeCount)||1)+(reg.children?.length||0);
+      await fsDelete("etkinlik_kayitlari",docId);
+      if(ev&&ev._docId){
+        await fbDb.collection("etkinlikler").doc(ev._docId).update({
+          filledSpots:firebase.firestore.FieldValue.increment(-kati)
+        });
+      }
+      if(sendMail)sendCancelMail(reg,ev);
+      ok++;
+      await new Promise(r=>setTimeout(r,200)); // Rate limit
+    }catch(e){console.error(e)}
+  }
+  setSelected(new Set());
+  showToast(`✅ ${ok}/${selected.size} kayıt silindi${sendMail?" + maller gönderildi":""}`);
+  setBusy(false);
+};
+
+// 🆕 Tüm kayıtları sil (çift onay)
+const delAll=async()=>{
+  if(!fil.length)return;
+  const filt=fe==="all"?"TÜM kayıtlar":`"${events.find(e=>e.id===fe)?.title}" etkinliğinin kayıtları`;
+  if(!confirm(`⚠️ DİKKAT!\n\n${filt} silinecek (${fil.length} kayıt).\n\nBu işlem GERİ ALINAMAZ. Devam etmek istiyor musun?`))return;
+  const onay=prompt(`Onaylamak için aşağıya "SİL" yazın (büyük harflerle):`);
+  if(onay!=="SİL"){showToast("❌ Onay alınamadı, işlem iptal edildi");return}
+  const sendMail=confirm(`${fil.length} veliye iptal bildirimi mail'i gönderilsin mi?\n\n• Evet → Hepsine iptal maili gönder\n• İptal → Sessizce sil (mail yok)`);
+  setBusy(true);
+  let ok=0;
+  // Etkinlik bazında filledSpots toplamlarını grupla
+  const evSpotsUpd={};
+  for(const reg of fil){
+    try{
+      const kati=typeof reg.totalAttendees==="number"?reg.totalAttendees:(parseInt(reg.parent?.attendeeCount)||1)+(reg.children?.length||0);
+      await fsDelete("etkinlik_kayitlari",reg._docId||reg.id);
+      // Etkinlik için toplam düşülecek katılımcı sayısı
+      evSpotsUpd[reg.eventId]=(evSpotsUpd[reg.eventId]||0)+kati;
+      if(sendMail){const ev=events.find(e=>e.id===reg.eventId);sendCancelMail(reg,ev)}
+      ok++;
+      await new Promise(r=>setTimeout(r,200));
+    }catch(e){console.error(e)}
+  }
+  // Her etkinlik için filledSpots'u toplu güncelle
+  for(const[eventId,toplamDus] of Object.entries(evSpotsUpd)){
+    const ev=events.find(e=>e.id===eventId);
+    if(ev&&ev._docId){
+      try{
+        await fbDb.collection("etkinlikler").doc(ev._docId).update({
+          filledSpots:firebase.firestore.FieldValue.increment(-toplamDus)
+        });
+      }catch(e){console.error(e)}
+    }
+  }
+  showToast(`✅ ${ok} kayıt silindi${sendMail?" + maller gönderildi":""}`);
+  setBusy(false);
+};
+
 const csv=()=>{const h="Tarih,Etkinlik,Ad,Soyad,Telefon,E-posta,İlçe,Veli Tipi,Katılımcı,Çocuk Sayısı,Bir Çiçek Referans,Kaynak,Ödeme\n";const rows=fil.map(r=>{const en=events.find(e=>e.id===r.eventId)?.title||"";const veliTip=r.isBirCicekFamily===true?"Bir Çiçek Ailesi":r.isBirCicekFamily===false?"Dışarıdan":"-";const ref=r.bircicekReferans?`${r.bircicekReferans.veliAdi||""} ${r.bircicekReferans.veliTelefon||""}`.trim():"";const kati=typeof r.totalAttendees==="number"?r.totalAttendees:(parseInt(r.parent?.attendeeCount)||1)+(r.children?.length||0);return`"${new Date(r.timestamp).toLocaleDateString("tr-TR")}","${en}","${r.parent.name}","${r.parent.surname}","${r.parent.phone}","${r.parent.email}","${r.parent.district}","${veliTip}","${kati}","${r.children.length}","${ref}","${r.extra.heardFrom}","${r.paymentMethod||"Ücretsiz"}"`}).join("\n");const b=new Blob(["\uFEFF"+h+rows],{type:"text/csv;charset=utf-8;"});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="kayit_raporu.csv";a.click()};
 
-return(<div><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:10}}><h2 style={{fontFamily:ffT,color:"#1b3a26",margin:0,fontSize:24}}>👥 Kayıtlar</h2><button onClick={csv} style={{...btnP,fontSize:12}}>📥 CSV</button></div>
-<div style={{marginBottom:16}}><select style={{...inp(false),width:"auto",minWidth:200,appearance:"auto"}} value={fe} onChange={e=>setFe(e.target.value)}><option value="all">Tüm Etkinlikler ({regs.length})</option>{events.map(ev=><option key={ev.id} value={ev.id}>{ev.title} ({regs.filter(r=>r.eventId===ev.id).length})</option>)}</select></div>
-<div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontFamily:ff,fontSize:12}}><thead><tr style={{background:G,color:"#fff"}}>{["Tarih","Etkinlik","Ad Soyad","Tip","Katılımcı","Telefon","E-posta","Kaynak","Ödeme"].map(h=><th key={h} style={{padding:"8px 10px",textAlign:"left",fontWeight:700,fontSize:11,whiteSpace:"nowrap"}}>{h}</th>)}</tr></thead><tbody>{fil.map((r,i)=>{
+return(<div>
+{/* Toast bildirim */}
+{toast&&<div style={{position:"fixed",top:20,right:20,background:toast.startsWith("❌")?"#fef2f2":"#e8f5e9",border:`2px solid ${toast.startsWith("❌")?"#fca5a5":"#a5d6a7"}`,borderRadius:12,padding:"12px 18px",zIndex:2000,fontFamily:ff,fontWeight:700,fontSize:13,color:toast.startsWith("❌")?"#991b1b":"#1b5e20",boxShadow:"0 8px 24px rgba(0,0,0,0.15)"}}>{toast}</div>}
+
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:10}}>
+<h2 style={{fontFamily:ffT,color:"#1b3a26",margin:0,fontSize:24}}>👥 Kayıtlar</h2>
+<div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+{selected.size>0&&<button onClick={delSelected} disabled={busy} style={{padding:"8px 16px",background:"#c62828",color:"#fff",border:"none",borderRadius:10,fontFamily:ff,fontWeight:700,fontSize:12,cursor:busy?"wait":"pointer",opacity:busy?0.6:1}}>🗑️ Seçilenleri Sil ({selected.size})</button>}
+<button onClick={delAll} disabled={busy||!fil.length} style={{padding:"8px 16px",background:"#7f1d1d",color:"#fff",border:"none",borderRadius:10,fontFamily:ff,fontWeight:700,fontSize:12,cursor:busy||!fil.length?"not-allowed":"pointer",opacity:(busy||!fil.length)?0.5:1}}>⚠️ Tümünü Sil</button>
+<button onClick={csv} style={{...btnP,fontSize:12}}>📥 CSV</button>
+</div>
+</div>
+
+<div style={{marginBottom:16,display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
+<select style={{...inp(false),width:"auto",minWidth:200,appearance:"auto"}} value={fe} onChange={e=>{setFe(e.target.value);setSelected(new Set())}}>
+<option value="all">Tüm Etkinlikler ({regs.length})</option>
+{events.map(ev=><option key={ev.id} value={ev.id}>{ev.title} ({regs.filter(r=>r.eventId===ev.id).length})</option>)}
+</select>
+{fil.length>0&&<span style={{fontFamily:ff,fontSize:12,color:"#888"}}>{fil.length} kayıt gösteriliyor{selected.size>0&&` • ${selected.size} seçili`}</span>}
+</div>
+
+<div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontFamily:ff,fontSize:12}}>
+<thead><tr style={{background:G,color:"#fff"}}>
+<th style={{padding:"8px 10px",width:30}}><input type="checkbox" checked={selected.size===fil.length&&fil.length>0} onChange={toggleSelectAll} style={{cursor:"pointer",accentColor:"#fff"}}/></th>
+{["Tarih","Etkinlik","Ad Soyad","Tip","Katılımcı","Telefon","E-posta","Kaynak","Ödeme"].map(h=><th key={h} style={{padding:"8px 10px",textAlign:"left",fontWeight:700,fontSize:11,whiteSpace:"nowrap"}}>{h}</th>)}
+<th style={{padding:"8px 10px",width:50,textAlign:"center"}}>Sil</th>
+</tr></thead>
+<tbody>{fil.map((r,i)=>{
 const en=events.find(e=>e.id===r.eventId)?.title||"—";
 const kati=typeof r.totalAttendees==="number"?r.totalAttendees:(parseInt(r.parent?.attendeeCount)||1)+(r.children?.length||0);
 const isBC=r.isBirCicekFamily===true;
-return(<tr key={r.id} style={{background:i%2?"#f9fcf9":"#fff",borderBottom:"1px solid #e8f0e8"}}><td style={{padding:"8px 10px",whiteSpace:"nowrap"}}>{new Date(r.timestamp).toLocaleDateString("tr-TR")}</td><td style={{padding:"8px 10px",fontWeight:700,color:G,maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{en}</td><td style={{padding:"8px 10px",fontWeight:700}}>{r.parent.name} {r.parent.surname}</td><td style={{padding:"8px 10px"}}><span style={{background:isBC?"#e8f5e9":"#fef3c7",color:isBC?"#2e5339":"#92400e",padding:"2px 8px",borderRadius:8,fontSize:10,fontWeight:700}}>{isBC?"🌷 Bir Çiçek":"🌍 Dışarıdan"}</span>{r.bircicekReferans&&(r.bircicekReferans.veliAdi||r.bircicekReferans.veliTelefon)&&<div style={{fontSize:10,color:"#888",marginTop:2}}>Ref: {r.bircicekReferans.veliAdi}</div>}</td><td style={{padding:"8px 10px",textAlign:"center",fontWeight:700}}>{kati} kişi</td><td style={{padding:"8px 10px"}}>{r.parent.phone}</td><td style={{padding:"8px 10px"}}>{r.parent.email}</td><td style={{padding:"8px 10px"}}>{r.extra.heardFrom}</td><td style={{padding:"8px 10px"}}><span style={{background:r.paymentMethod==="iban"?"#e3f2fd":r.paymentMethod==="event"?"#fff3e0":"#e8f5e9",color:r.paymentMethod==="iban"?"#1565c0":r.paymentMethod==="event"?"#e65100":"#2e7d32",padding:"2px 8px",borderRadius:8,fontSize:10,fontWeight:700}}>{r.paymentMethod==="iban"?"Havale":r.paymentMethod==="event"?"Etkinlikte":"Ücretsiz"}</span></td></tr>)})}</tbody></table></div></div>)}
+const isSel=selected.has(r._docId);
+return(<tr key={r._docId||r.id} style={{background:isSel?"#fef3c7":(i%2?"#f9fcf9":"#fff"),borderBottom:"1px solid #e8f0e8"}}>
+<td style={{padding:"8px 10px",textAlign:"center"}}><input type="checkbox" checked={isSel} onChange={()=>toggleSelect(r._docId)} style={{cursor:"pointer",accentColor:G}}/></td>
+<td style={{padding:"8px 10px",whiteSpace:"nowrap"}}>{new Date(r.timestamp).toLocaleDateString("tr-TR")}</td>
+<td style={{padding:"8px 10px",fontWeight:700,color:G,maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{en}</td>
+<td style={{padding:"8px 10px",fontWeight:700}}>{r.parent.name} {r.parent.surname}</td>
+<td style={{padding:"8px 10px"}}><span style={{background:isBC?"#e8f5e9":"#fef3c7",color:isBC?"#2e5339":"#92400e",padding:"2px 8px",borderRadius:8,fontSize:10,fontWeight:700}}>{isBC?"🌷 Bir Çiçek":"🌍 Dışarıdan"}</span>{r.bircicekReferans&&(r.bircicekReferans.veliAdi||r.bircicekReferans.veliTelefon)&&<div style={{fontSize:10,color:"#888",marginTop:2}}>Ref: {r.bircicekReferans.veliAdi}</div>}</td>
+<td style={{padding:"8px 10px",textAlign:"center",fontWeight:700}}>{kati} kişi</td>
+<td style={{padding:"8px 10px"}}>{r.parent.phone}</td>
+<td style={{padding:"8px 10px"}}>{r.parent.email}</td>
+<td style={{padding:"8px 10px"}}>{r.extra.heardFrom}</td>
+<td style={{padding:"8px 10px"}}><span style={{background:r.paymentMethod==="iban"?"#e3f2fd":r.paymentMethod==="event"?"#fff3e0":"#e8f5e9",color:r.paymentMethod==="iban"?"#1565c0":r.paymentMethod==="event"?"#e65100":"#2e7d32",padding:"2px 8px",borderRadius:8,fontSize:10,fontWeight:700}}>{r.paymentMethod==="iban"?"Havale":r.paymentMethod==="event"?"Etkinlikte":"Ücretsiz"}</span></td>
+<td style={{padding:"8px 10px",textAlign:"center"}}><button onClick={()=>delOne(r)} disabled={busy} style={{background:"#ffebee",border:"none",borderRadius:6,padding:"4px 8px",color:"#c62828",fontSize:13,fontWeight:700,cursor:busy?"wait":"pointer",opacity:busy?0.5:1}} title="Sil">🗑️</button></td>
+</tr>)})}
+{!fil.length&&<tr><td colSpan="11" style={{padding:30,textAlign:"center",color:"#999",fontStyle:"italic"}}>Bu filtrede kayıt yok.</td></tr>}
+</tbody></table></div></div>)}
 
 function KidReport({events,regs}){const all=[];regs.forEach(r=>{const en=events.find(e=>e.id===r.eventId)?.title||"";r.children.forEach(c=>{const age=c.birthDate?Math.floor((Date.now()-new Date(c.birthDate).getTime())/31557600000):"—";all.push({...c,pN:r.parent.name+" "+r.parent.surname,pP:r.parent.phone,evN:en,age})})});
 const csv=()=>{const h="Etkinlik,Ad,Soyad,Yaş,Cinsiyet,Okul,Özel Durum,Ebeveyn,Telefon\n";const rows=all.map(c=>`"${c.evN}","${c.name}","${c.surname}","${c.age}","${c.gender==="kiz"?"Kız":"Erkek"}","${c.currentSchool}","${c.specialNeeds}","${c.pN}","${c.pP}"`).join("\n");const b=new Blob(["\uFEFF"+h+rows],{type:"text/csv;charset=utf-8;"});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="cocuk_raporu.csv";a.click()};
