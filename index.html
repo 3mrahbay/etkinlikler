@@ -60,13 +60,20 @@ return cdnBase+"/"+path;
 function fbUploadImage(file,path){return bunnyUpload(file,path.split("/")[0]||"etkinlikler")}
 // Brevo Mail
 var BREVO_URL="https://script.google.com/macros/s/AKfycbwUNvVhTCvxUKOMtbFJ4_UASBo8-sgT13qT_9tWeYKZR3IYaYKUhGdSaGgGaaqMaZLf/exec";
+// Mail proxy'si okul dışı alıcılarda gönderenin Firebase oturumunu doğrular.
+function mailOturumJetonu(){
+try{var u=fbAuth&&fbAuth.currentUser;return u?u.getIdToken().then(function(t){return t||""}).catch(function(){return ""}):Promise.resolve("")}
+catch(e){return Promise.resolve("")}
+}
 function brevoMail(to,n,s,h,r){
 console.log("📧 Mail gönderiliyor:",to,s);
-fetch(BREVO_URL,{
+mailOturumJetonu().then(function(idToken){
+return fetch(BREVO_URL,{
 method:"POST",
 mode:"no-cors",
-headers:{"Content-Type":"application/json"},
-body:JSON.stringify({to:to,toName:n,subject:s,htmlContent:h,replyTo:r||""})
+headers:{"Content-Type":"text/plain"},
+body:JSON.stringify({to:to,toName:n,subject:s,htmlContent:h,replyTo:r||"",idToken:idToken})
+});
 }).then(function(res){console.log("📧 Mail response:",res.type,res.status)}).catch(function(e){console.error("📧 Mail HATA:",e)});
 }
 </script>
