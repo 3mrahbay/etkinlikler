@@ -208,6 +208,7 @@ return(<div style={{maxWidth:420,margin:"0 auto",display:"flex",gap:8,flexWrap:"
 <input value={name} onChange={e=>setName(e.target.value)} placeholder="Adınız" style={{padding:"10px 14px",borderRadius:10,border:"2px solid rgba(255,255,255,0.3)",background:"rgba(255,255,255,0.1)",color:"#fff",fontFamily:ff,fontSize:13,outline:"none",flex:"1 1 120px",boxSizing:"border-box"}}/>
 <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="E-posta adresiniz" type="email" style={{padding:"10px 14px",borderRadius:10,border:status==="error"?"2px solid #ef5350":"2px solid rgba(255,255,255,0.3)",background:"rgba(255,255,255,0.1)",color:"#fff",fontFamily:ff,fontSize:13,outline:"none",flex:"2 1 180px",boxSizing:"border-box"}}/>
 <button onClick={submit} style={{padding:"10px 20px",background:"#fff",color:"#1b5e20",border:"none",borderRadius:10,fontFamily:ff,fontWeight:800,fontSize:13,cursor:"pointer",whiteSpace:"nowrap"}}>Abone Ol</button>
+<div style={{flexBasis:"100%",fontFamily:ff,fontSize:11,color:"rgba(255,255,255,0.8)",textAlign:"center"}}>Adınız ve e-postanız yalnızca etkinlik duyuruları için kullanılır; dilediğiniz zaman abonelikten çıkabilirsiniz. <a href="kvkk.html" target="_blank" rel="noopener" style={{color:"#fff"}}>KVKK aydınlatma metni</a></div>
 </div>)}
 
 const IBAN_INFO={
@@ -260,6 +261,7 @@ brevoMail("eposta@bircicekkoleji.com","Bir Çiçek Koleji","Yeni Kayıt: "+event
 
 /* ═══ COUNTDOWN ═══ */
 function useCountdown(td){const[t,setT]=useState({});useEffect(()=>{const c=()=>{const d=new Date(td).getTime()-Date.now();return d<=0?{expired:true}:{days:Math.floor(d/864e5),hours:Math.floor((d/36e5)%24),minutes:Math.floor((d/6e4)%60),seconds:Math.floor((d/1e3)%60),expired:false}};setT(c());const i=setInterval(()=>setT(c()),1000);return()=>clearInterval(i)},[td]);return t}
+function evBitti(ev){try{const t=new Date(ev.date+"T"+(ev.endTime||ev.startTime||"23:59")).getTime();return !isNaN(t)&&t<Date.now()}catch(e){return false}}
 function Countdown({date}){const t=useCountdown(date);if(t.expired)return<span style={{color:"#c62828",fontWeight:600,fontSize:12,fontFamily:ff}}>Sona erdi</span>;return(<div style={{display:"flex",gap:4}}>{[{v:t.days,l:"Gün"},{v:t.hours,l:"Saat"},{v:t.minutes,l:"Dk"},{v:t.seconds,l:"Sn"}].map((u,i)=>(<div key={i} style={{background:`linear-gradient(135deg,${G},${GL})`,color:"#fff",borderRadius:6,padding:"3px 6px",textAlign:"center",minWidth:36,fontFamily:"'DM Mono', monospace"}}><div style={{fontSize:14,fontWeight:700,lineHeight:1.2}}>{String(u.v||0).padStart(2,"0")}</div><div style={{fontSize:8,opacity:0.85,letterSpacing:0.5}}>{u.l}</div></div>))}</div>)}
 
 /* ═══ 🆕 LOGIN REQUIRED MODAL ═══ */
@@ -342,7 +344,7 @@ return(<div style={{background:"#fff",borderRadius:16,overflow:"hidden",boxShado
 {/* 🆕 Kapasite barı - katılımcı sayısı baz alınmış */}
 <div style={{marginBottom:12}}><div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:"#888",marginBottom:3,fontFamily:ff}}><span><strong style={{color:G}}>{rc}</strong>/{ev.capacity} kişi</span><span>{ev.capacity-rc>0?`${ev.capacity-rc} yer kaldı`:"⚠️ DOLU"}</span></div><div style={{height:5,background:"#e8f0e8",borderRadius:3,overflow:"hidden"}}><div style={{height:"100%",borderRadius:3,background:pct>=100?"#dc2626":pct>80?"#e65100":`linear-gradient(90deg,${GL},#6ba368)`,width:`${Math.min(pct,100)}%`}}/></div></div>
 
-<div style={{display:"flex",gap:6}}><button onClick={()=>onReg(ev)} disabled={rc>=ev.capacity} style={{...btnP,flex:1,padding:"9px 0",fontSize:12,opacity:rc>=ev.capacity?0.5:1,cursor:rc>=ev.capacity?"not-allowed":"pointer"}}>{rc>=ev.capacity?"❌ Kontenjan Doldu":"🌿 Katıl"}</button><button onClick={()=>onDet(ev)} style={{...btnS,padding:"9px 14px",fontSize:12}}>Detay</button></div></div></div>)}
+<div style={{display:"flex",gap:6}}><button onClick={()=>onReg(ev)} disabled={rc>=ev.capacity||evBitti(ev)} style={{...btnP,flex:1,padding:"9px 0",fontSize:12,opacity:(rc>=ev.capacity||evBitti(ev))?0.5:1,cursor:(rc>=ev.capacity||evBitti(ev))?"not-allowed":"pointer"}}>{evBitti(ev)?"Etkinlik sona erdi":rc>=ev.capacity?"❌ Kontenjan Doldu":"🌿 Katıl"}</button><button onClick={()=>onDet(ev)} style={{...btnS,padding:"9px 14px",fontSize:12}}>Detay</button></div></div></div>)}
 
 /* ═══ DETAIL MODAL ═══ */
 function DetModal({ev,regs,onClose,onReg}){
@@ -380,12 +382,13 @@ return(<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",displa
 <p style={{fontFamily:ff,fontSize:13,color:"#555",lineHeight:1.7,marginBottom:14,whiteSpace:"pre-line"}}>{ev.fullDesc||ev.shortDesc}</p>
 {ytId&&<div style={{marginBottom:14,borderRadius:10,overflow:"hidden",aspectRatio:"16/9"}}><iframe src={`https://www.youtube.com/embed/${ytId}`} style={{width:"100%",height:"100%",border:"none"}} allowFullScreen/></div>}
 <div style={{marginBottom:14,padding:"10px 14px",background:"#fff8e1",borderRadius:8,border:"1px solid #ffe082"}}><div style={{fontFamily:ff,fontSize:12,color:"#666"}}>{rc}/{ev.capacity} kişi katılıyor — <strong>{ev.capacity-rc>0?`${ev.capacity-rc} yer kaldı`:"Kontenjan dolu"}</strong></div></div>
-<div style={{display:"flex",gap:8}}><button onClick={()=>{onClose();onReg(ev)}} disabled={rc>=ev.capacity} style={{...btnP,flex:1,opacity:rc>=ev.capacity?0.5:1,cursor:rc>=ev.capacity?"not-allowed":"pointer"}}>{rc>=ev.capacity?"❌ Doldu":"🌿 Katıl"}</button><button onClick={onClose} style={btnS}>Kapat</button></div></div></div></div>)}
+<div style={{display:"flex",gap:8}}><button onClick={()=>{onClose();onReg(ev)}} disabled={rc>=ev.capacity||evBitti(ev)} style={{...btnP,flex:1,opacity:(rc>=ev.capacity||evBitti(ev))?0.5:1,cursor:(rc>=ev.capacity||evBitti(ev))?"not-allowed":"pointer"}}>{evBitti(ev)?"Etkinlik sona erdi":rc>=ev.capacity?"❌ Doldu":"🌿 Katıl"}</button><button onClick={onClose} style={btnS}>Kapat</button></div></div></div></div>)}
 /* ═══ 🆕 REGISTRATION MODAL (YENİ ÖZELLİKLER) ═══ */
 const emptyChild=()=>({name:"",surname:"",birthDate:"",gender:"",currentSchool:"",specialNeeds:""});
 const CT=`Etkinlik süresince çekilecek fotoğraf ve video kayıtlarının, Bir Çiçek Koleji Anaokulu'nun tanıtım faaliyetlerinde kullanılmasına izin verdiğimi kabul ediyorum. Görsellerin kullanım hakkı münhasıran Bir Çiçek Koleji Anaokulu'na aittir.`;
 const MT=`Bir Çiçek Koleji Anaokulu tarafından eğitim ve etkinlik bilgilendirmeleri amacıyla iletişim kurulmasına izin veriyorum.`;
-const KT=`6698 sayılı KVKK kapsamında, kişisel verilerimin etkinlik organizasyonu amacıyla işlenmesine açık rıza veriyorum.`;
+const KT=`Kişisel verilerimin etkinlik organizasyonu amacıyla nasıl işlendiğini anlatan KVKK aydınlatma metnini okudum (bağlantı aşağıda).`;
+const HT=`Paylaştığım alerji ve sağlık bilgisinin yalnızca etkinlik günü çocuğumun güvenliği için işlenmesine açık rıza veriyorum.`;
 
 function RegModal({event,onClose,onSubmit,settings,user,profile,isVeli}){
 const totalSteps=event.isFree?4:5;
@@ -394,7 +397,7 @@ const[p,setP]=useState({name:profile?.name||user?.displayName?.split(" ")[0]||""
 const[ch,setCh]=useState(profile?.children?.length?profile.children.map(c=>({...c})):[emptyChild()]);
 // 🆕 Extra'ya bircicekReferansAdi ve bircicekReferansTelefon eklendi
 const[ex,setEx]=useState({heardFrom:"",allergies:profile?.allergies||"",emergencyName:profile?.emergencyName||"",emergencyPhone:profile?.emergencyPhone||"",notes:"",bircicekReferansAdi:"",bircicekReferansTelefon:""});
-const[co,setCo]=useState({photo:profile?.photoConsent||false,marketing:profile?.marketingConsent||false,kvkk:profile?.kvkkConsent||false});
+const[co,setCo]=useState({photo:profile?.photoConsent||false,marketing:profile?.marketingConsent||false,kvkk:profile?.kvkkConsent||false,health:false});
 const[payMethod,setPayMethod]=useState("");
 const[done,setDone]=useState(false);const[err,setErr]=useState({});
 
@@ -405,7 +408,7 @@ if(step===3){if(!ex.heardFrom)e.hd=true;if(!ex.emergencyName.trim())e.en=true;if
 const consentStep=event.isFree?4:5;
 const payStep=4;
 if(!event.isFree&&step===payStep){if(!payMethod)e.pay=true}
-if(step===consentStep){if(!co.photo)e.ph=true;if(!co.kvkk)e.kv=true}
+if(step===consentStep){if(!co.kvkk)e.kv=true;if(ex.allergies&&ex.allergies.trim()&&!co.health)e.hl=true}
 setErr(e);return!Object.keys(e).length};
 
 const updCh=(i,f,v)=>{const c=[...ch];c[i]={...c[i],[f]:v};setCh(c)};
@@ -427,6 +430,7 @@ const reg={
   children:ch,
   extra:ex,
   userEmail:user?.email||"",
+  consents:{kvkkAydinlatma:!!co.kvkk,photo:!!co.photo,marketing:!!co.marketing,health:!!(ex.allergies&&ex.allergies.trim()&&co.health),date:new Date().toISOString()},
   totalAttendees:totalAttendees,
   isBirCicekFamily:isBirCicekFamily,
   bircicekReferans:bircicekReferans
@@ -492,7 +496,7 @@ return(<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",displa
 {payMethod==="iban"&&<div style={{background:"#f1f8f1",borderRadius:10,padding:14,border:"1px solid #c8e6c9"}}><div style={{fontFamily:ff,fontSize:12,color:"#555",lineHeight:1.8}}><div><strong>Banka:</strong> {settings.ibanBank}</div><div><strong>Hesap Sahibi:</strong> {settings.ibanHolder}</div><div style={{fontFamily:"'DM Mono',monospace",fontSize:14,fontWeight:700,color:G,marginTop:4}}>{settings.ibanNumber}</div><div style={{marginTop:6,fontSize:11,color:"#888"}}>Açıklama kısmına "<strong>{event.title} - {p.name} {p.surname}</strong>" yazınız.</div></div></div>}
 </div>}
 
-{step===(event.isFree?4:5)&&<div style={{display:"grid",gap:12}}>{[{k:"photo",t:CT,r:true,l:"Fotoğraf / Video İzni"},{k:"kvkk",t:KT,r:true,l:"KVKK Aydınlatma"},{k:"marketing",t:MT,r:false,l:"İletişim İzni (İsteğe Bağlı)"}].map(c=>(<div key={c.k} style={{background:err[c.k==="photo"?"ph":c.k==="kvkk"?"kv":"x"]?"#fff5f5":"#f9fcf9",border:`1px solid ${err[c.k==="photo"?"ph":c.k==="kvkk"?"kv":"x"]?"#e53935":"#dce8dc"}`,borderRadius:10,padding:12}}><div style={{display:"flex",gap:8,alignItems:"flex-start"}}><input type="checkbox" checked={co[c.k]} onChange={e=>setCo({...co,[c.k]:e.target.checked})} style={{marginTop:2,width:16,height:16,accentColor:G,flexShrink:0}}/><div><div style={{fontFamily:ff,fontWeight:800,fontSize:12,color:G,marginBottom:3}}>{c.l}{c.r&&<span style={{color:"#e53935"}}> *</span>}</div><div style={{fontFamily:ff,fontSize:11,color:"#666",lineHeight:1.5}}>{c.t}</div></div></div></div>))}</div>}
+{step===(event.isFree?4:5)&&<div style={{display:"grid",gap:12}}>{[{k:"kvkk",t:KT,r:true,l:"KVKK Aydınlatma Metni"},...(ex.allergies&&ex.allergies.trim()?[{k:"health",t:HT,r:true,l:"Sağlık Bilgisi İzni"}]:[]),{k:"photo",t:CT,r:false,l:"Fotoğraf / Video İzni (İsteğe Bağlı)"},{k:"marketing",t:MT,r:false,l:"İletişim İzni (İsteğe Bağlı)"}].map(c=>(<div key={c.k} style={{background:err[c.k==="health"?"hl":c.k==="kvkk"?"kv":"x"]?"#fff5f5":"#f9fcf9",border:`1px solid ${err[c.k==="health"?"hl":c.k==="kvkk"?"kv":"x"]?"#e53935":"#dce8dc"}`,borderRadius:10,padding:12}}><div style={{display:"flex",gap:8,alignItems:"flex-start"}}><input type="checkbox" checked={co[c.k]} onChange={e=>setCo({...co,[c.k]:e.target.checked})} style={{marginTop:2,width:16,height:16,accentColor:G,flexShrink:0}}/><div><div style={{fontFamily:ff,fontWeight:800,fontSize:12,color:G,marginBottom:3}}>{c.l}{c.r&&<span style={{color:"#e53935"}}> *</span>}</div><div style={{fontFamily:ff,fontSize:11,color:"#666",lineHeight:1.5}}>{c.t}</div></div></div></div>))}<a href="kvkk.html" target="_blank" rel="noopener" style={{fontFamily:ff,fontSize:12,color:G,fontWeight:700}}>KVKK aydınlatma metnini okuyun</a><div style={{fontFamily:ff,fontSize:11,color:"#777",lineHeight:1.5}}>Fotoğraf/video ve iletişim izinleri isteğe bağlıdır; vermemeniz etkinliğe katılımınızı etkilemez.</div></div>}
 
 </div>
 
@@ -850,6 +854,12 @@ const checkAuth=fbAuth.onAuthStateChanged(u=>{
         setRegs(data);
       },err=>{console.error("Kayıt dinleme hatası:",err)});
     }
+  }else if(u){
+    // Veli kendi kayıtlarını görür (Firestore kuralı izin verdiğinde; vermezse sessizce boş kalır)
+    if(unsubRegs){unsubRegs();unsubRegs=null}
+    unsubRegs=fbDb.collection("etkinlik_kayitlari").where("userEmail","==",u.email).onSnapshot(snap=>{
+      setRegs(snap.docs.map(d=>{const o=d.data();o._docId=d.id;return o}));
+    },err=>{console.warn("Kendi kayıtlarım okunamadı:",err&&err.code);setRegs([])});
   }else{
     if(unsubRegs){unsubRegs();unsubRegs=null}
     setRegs([]);
@@ -915,7 +925,7 @@ const pData={
   allergies:reg.extra?.allergies||"",children:reg.children||[],
   updatedAt:new Date().toISOString()
 };
-if(!profile){pData.kvkkConsent=true;pData.kvkkDate=new Date().toISOString();pData.photoConsent=true}
+if(reg.consents){pData.kvkkConsent=!!reg.consents.kvkkAydinlatma;pData.kvkkDate=reg.consents.date;pData.photoConsent=!!reg.consents.photo;pData.marketingConsent=!!reg.consents.marketing}
 await fsSave("etkinlik_profiller",fbUser.email,{...profile,...pData});
 setProfile(p=>({...p,...pData}))
 }
@@ -923,6 +933,7 @@ setProfile(p=>({...p,...pData}))
 
 // 🆕 Kayıt başlatma fonksiyonu - Login + audience kontrolü
 const handleRegStart=(ev)=>{
+if(evBitti(ev)){alert("Bu etkinlik sona erdi.");return}
 // Login kontrolü
 if(!fbUser){
 setLoginRequired(ev);
