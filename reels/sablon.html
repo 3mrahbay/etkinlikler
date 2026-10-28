@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<title>Etkinlik Reels şablonu</title>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&family=DM+Sans:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+/* 1080×1920 Reels sahnesi. Instagram arayüzü üstte ~250px, altta ~420px, sağda ~150px yer kaplar;
+   önemli içerik x: 90–900, y: 280–1480 arasında tutulur. */
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1080px;height:1920px;overflow:hidden;background:#000}
+#sahne{position:relative;width:1080px;height:1920px;overflow:hidden;font-family:'DM Sans',sans-serif}
+.zemin{position:absolute;inset:0}
+.daire{position:absolute;border-radius:50%}
+.yaprak{position:absolute;width:120px;height:120px}
+.bolum{position:absolute;left:90px;right:180px;top:300px;bottom:440px;display:flex;flex-direction:column;justify-content:center;gap:34px;opacity:0}
+.oge{opacity:0;will-change:transform,opacity}
+.ust-rozet{align-self:flex-start;font-weight:800;font-size:34px;letter-spacing:2px;padding:14px 26px;border-radius:999px}
+.kanca{font-family:'Quicksand',sans-serif;font-weight:700;font-size:118px;line-height:1.05}
+.kanca-alt{font-family:'Quicksand',sans-serif;font-weight:600;font-size:64px;line-height:1.2}
+.baslik{font-family:'Quicksand',sans-serif;font-weight:700;font-size:96px;line-height:1.08}
+.alt{font-size:46px;font-weight:700;line-height:1.35}
+.metin{font-family:'Quicksand',sans-serif;font-weight:600;font-size:66px;line-height:1.28}
+.kart{display:flex;align-items:center;gap:30px;background:#fff;border-radius:36px;padding:30px 36px;box-shadow:0 16px 40px rgba(0,0,0,0.12)}
+.kart-ikon{width:96px;height:96px;border-radius:28px;display:flex;align-items:center;justify-content:center;flex:none}
+.kart-etiket{font-size:30px;font-weight:800;letter-spacing:1.5px;opacity:0.65}
+.kart-deger{font-family:'Quicksand',sans-serif;font-size:56px;font-weight:700;line-height:1.15}
+.rozetler{display:flex;flex-wrap:wrap;gap:18px}
+.rozet{font-size:40px;font-weight:800;padding:16px 28px;border-radius:999px}
+.cta{font-family:'Quicksand',sans-serif;font-weight:700;font-size:84px;line-height:1.1}
+.cta-kutu{align-self:flex-start;font-size:44px;font-weight:800;padding:26px 40px;border-radius:28px;color:#fff}
+.sahne-zemin{position:absolute;inset:0;opacity:0}
+.kelime{display:inline-block;opacity:0;margin-right:0.24em;will-change:transform,opacity}
+.vurgu{position:relative;z-index:0}
+.vurgu::after{content:"";position:absolute;left:-6px;right:-6px;bottom:6px;height:38%;border-radius:12px;z-index:-1;background:var(--vurgu);transform-origin:left;transform:scaleX(var(--cizgi,0))}
+.cizim{position:absolute;left:0;right:0;bottom:440px;height:520px;display:flex;justify-content:center;align-items:flex-end;opacity:0;pointer-events:none}
+.kapanis{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:40px;opacity:0;background:#1d3b28}
+.kapanis img{width:300px;height:300px;border-radius:50%;border:10px solid rgba(255,255,255,0.18)}
+.kapanis .ad{font-family:'Quicksand',sans-serif;font-weight:700;font-size:72px;color:#fff;text-align:center;line-height:1.1}
+.kapanis .yer{font-size:40px;font-weight:700;color:#cdeccf;letter-spacing:2px}
+</style>
+</head>
+<body>
+<div id="sahne"></div>
+<script>
+// ═══ REELS ŞABLONU ═══
+// hazirla(veri, sesSuresi) sahneyi kurar; ciz(t) t. saniyedeki kareyi çizer (kare kare kayıt için belirlenimci).
+
+var V = null, ZAMAN = [], TOPLAM = 0, GIRIS = 0.6, KAPANIS = 2.6;
+
+function el(etiket, sinif, icerik, stil) {
+  var e = document.createElement(etiket);
+  if (sinif) e.className = sinif;
+  if (icerik != null) e.innerHTML = icerik;
+  if (stil) Object.assign(e.style, stil);
+  return e;
+}
+function kacis(s) { return String(s).replace(/[&<>"]/g, function (c) { return ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"})[c]; }); }
+
+// Metni kelime kelime animasyon için böler; *yıldızlı* kelime vurgulanır
+function kelimeler(metin) {
+  return kacis(metin).split(/\s+/).map(function (k) {
+    var v = /^\*(.+)\*([.,!?…]*)$/.exec(k);
+    return v ? '<span class="kelime vurgu">' + v[1] + '</span>' + (v[2] ? '<span class="kelime">' + v[2] + '</span>' : '')
+             : '<span class="kelime">' + k + '</span>';
+  }).join("");
+}
+
+// Sahne çizimleri (fotoğraf yerine; çocuk yüzü içermez)
+var CIZIMLER = {
+  kitapCay: function (renk, koyu) {
+    return '<svg width="760" height="500" viewBox="0 0 760 500">' +
+      '<ellipse cx="380" cy="470" rx="330" ry="22" fill="' + koyu + '" opacity="0.08"/>' +
+      '<g class="kitap-sol"><path d="M120 440 L360 455 L360 170 L120 150 Z" fill="#fff" stroke="' + koyu + '" stroke-width="6" stroke-linejoin="round"/>' +
+      '<path d="M160 210 L320 222 M160 260 L320 272 M160 310 L300 320 M160 360 L320 372" stroke="' + renk + '" stroke-width="8" stroke-linecap="round" opacity="0.5"/></g>' +
+      '<g class="kitap-sag"><path d="M600 440 L360 455 L360 170 L600 150 Z" fill="#fff" stroke="' + koyu + '" stroke-width="6" stroke-linejoin="round"/>' +
+      '<path d="M400 222 L560 210 M400 272 L560 260 M400 322 L540 312 M400 372 L560 360" stroke="' + renk + '" stroke-width="8" stroke-linecap="round" opacity="0.5"/></g>' +
+      '<path class="sayfa" d="M360 455 L360 170 L560 150 L560 440 Z" fill="' + renk + '" opacity="0.18" style="transform-origin:360px 300px"/>' +
+      '<g transform="translate(600 250)"><path d="M10 40 L90 40 L80 200 Q50 215 20 200 Z" fill="#fff" stroke="' + koyu + '" stroke-width="6" stroke-linejoin="round"/>' +
+      '<path d="M16 90 L84 90 L78 196 Q50 208 22 196 Z" fill="#b5532a" opacity="0.85"/>' +
+      '<ellipse cx="50" cy="215" rx="62" ry="12" fill="#fff" stroke="' + koyu + '" stroke-width="6"/>' +
+      '<path class="buhar b1" d="M35 25 C20 0 50 -15 35 -40" stroke="' + koyu + '" stroke-width="6" fill="none" stroke-linecap="round" opacity="0.5"/>' +
+      '<path class="buhar b2" d="M62 25 C47 0 77 -15 62 -40" stroke="' + koyu + '" stroke-width="6" fill="none" stroke-linecap="round" opacity="0.5"/></g>' +
+      '</svg>';
+  },
+  yapraklar: function (renk) {
+    var y = '';
+    for (var i = 0; i < 7; i++) y += '<path class="yaprak-c" data-i="' + i + '" d="M0 0 C40 -40 100 -30 120 0 C100 30 40 40 0 0 Z" fill="' + renk + '" opacity="' + (0.25 + i * 0.08) + '"/>';
+    return '<svg width="760" height="500" viewBox="-380 -250 760 500">' + y + '</svg>';
+  }
+};
+
+var IKONLAR = {
+  takvim: '<svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
+  saat: '<svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  konum: '<svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6-5.7-6-11a6 6 0 0 1 12 0c0 5.3-6 11-6 11z"/><circle cx="12" cy="10" r="2.2"/></svg>',
+  kisi: '<svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>',
+  kitap: '<svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5a2 2 0 0 1 2-2h5v17H6a2 2 0 0 0-2 2z"/><path d="M20 5a2 2 0 0 0-2-2h-5v17h5a2 2 0 0 1 2 2z"/></svg>',
+  ucret: '<svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/></svg>'
+};
+
+// Sahne türleri: kanca, baslik, metin, bilgi, cta
+function sahneKur(s, renk, zemin, koyu) {
+  var b = el("div", "bolum");
+  var o = function (n) { n.classList.add("oge"); b.appendChild(n); return n; };
+  if (s.ustRozet) o(el("div", "ust-rozet", kacis(s.ustRozet), s.koyuZemin ? { background: "#fff", color: renk } : { background: renk, color: "#fff" }));
+  var yaziRengi = s.koyuZemin ? "#fff" : koyu;
+  if (s.tur === "kanca") {
+    var kb = o(el("div", "kanca", kelimeler(s.buyuk), { color: yaziRengi }));
+    kb.style.setProperty("--vurgu", s.koyuZemin ? "rgba(255,255,255,0.28)" : renk + "40");
+    if (s.kucuk) o(el("div", "kanca-alt", kelimeler(s.kucuk), { color: yaziRengi, opacity: 0.92 }));
+  } else if (s.tur === "baslik") {
+    if (s.ikon) o(el("div", "kart-ikon", IKONLAR[s.ikon] || "", { background: renk, color: "#fff", width: "150px", height: "150px", borderRadius: "40px" }));
+    o(el("div", "baslik", kacis(s.baslik), { color: koyu }));
+    if (s.alt) o(el("div", "alt", kacis(s.alt), { color: renk }));
+  } else if (s.tur === "metin") {
+    var m = o(el("div", "metin", kelimeler(s.metin), { color: yaziRengi }));
+    m.style.setProperty("--vurgu", s.koyuZemin ? "rgba(255,255,255,0.28)" : renk + "40");
+  } else if (s.tur === "bilgi") {
+    (s.kartlar || []).forEach(function (k) {
+      var kart = el("div", "kart");
+      kart.appendChild(el("div", "kart-ikon", IKONLAR[k.ikon] || "", { background: zemin, color: renk }));
+      var y = el("div", null, null, { display: "flex", flexDirection: "column", gap: "6px" });
+      y.appendChild(el("div", "kart-etiket", kacis(k.etiket), { color: koyu }));
+      y.appendChild(el("div", "kart-deger", kacis(k.deger), { color: koyu }));
+      kart.appendChild(y);
+      o(kart);
+    });
+  } else if (s.tur === "cta") {
+    if (s.rozetler) {
+      var r = el("div", "rozetler");
+      s.rozetler.forEach(function (t, i) {
+        r.appendChild(el("span", "rozet", kacis(t), i === 0 ? { background: renk, color: "#fff" } : { background: "#fff", color: koyu }));
+      });
+      o(r);
+    }
+    o(el("div", "cta", kacis(s.baslik), { color: koyu }));
+    if (s.dugme) o(el("div", "cta-kutu nabiz", kacis(s.dugme), { background: koyu }));
+    if (s.adres) o(el("div", "alt", kacis(s.adres), { color: renk }));
+  }
+  if (s.cizim) { b.style.justifyContent = "flex-start"; b.style.paddingTop = "40px"; }
+  var paket = document.createElement("div");
+  if (s.koyuZemin) paket.appendChild(el("div", "sahne-zemin", null, { background: "radial-gradient(900px 700px at 80% 10%, rgba(255,255,255,0.18), transparent 60%), " + renk }));
+  if (s.cizim && CIZIMLER[s.cizim]) paket.appendChild(el("div", "cizim", CIZIMLER[s.cizim](renk, koyu)));
+  paket.appendChild(b);
+  return paket;
+}
+
+function hazirla(veri, sesSuresi) {
+  V = veri;
+  var sahne = document.getElementById("sahne");
+  sahne.innerHTML = "";
+  var renk = veri.renk || "#2e5339", zemin = veri.zemin || "#e3f1e6", koyu = veri.koyu || "#1f2d23";
+  var z = el("div", "zemin", null, { background: "linear-gradient(170deg," + zemin + " 0%, #ffffff 55%, " + zemin + " 100%)" });
+  sahne.appendChild(z);
+  // Hareketli süs daireleri
+  [[760, 260, 420, 0.16], [-120, 1180, 380, 0.12], [820, 1460, 300, 0.1], [180, 120, 160, 0.12]].forEach(function (d, i) {
+    var c = el("div", "daire", null, { left: d[0] + "px", top: d[1] + "px", width: d[2] + "px", height: d[2] + "px", background: renk, opacity: d[3] });
+    c.dataset.i = i; sahne.appendChild(c);
+  });
+  // Süreler: sahne ağırlıkları seslendirme süresine yayılır
+  var agirlik = veri.sahneler.reduce(function (t, s) { return t + (s.agirlik || 1); }, 0);
+  var bas = 0, konusma = Math.max(sesSuresi, 8);
+  ZAMAN = veri.sahneler.map(function (s) {
+    var sure = konusma * (s.agirlik || 1) / agirlik;
+    var dugum = sahneKur(s, renk, zemin, koyu);
+    sahne.appendChild(dugum);
+    var r = { bas: bas, son: bas + sure, dugum: dugum };
+    bas += sure; return r;
+  });
+  ZAMAN[ZAMAN.length - 1].son += GIRIS; // son sahne seslendirme bitene kadar kalır
+  var k = el("div", "kapanis");
+  k.appendChild(el("img", null, null)); k.querySelector("img").src = veri.logo || "../okul_logo.png";
+  k.appendChild(el("div", "ad", "Bir Çiçek Koleji<br>Anaokulu"));
+  k.appendChild(el("div", "yer", "TUZLA · İSTANBUL"));
+  sahne.appendChild(k);
+  TOPLAM = GIRIS + konusma + KAPANIS;
+  return TOPLAM;
+}
+
+function sinir(x) { return Math.max(0, Math.min(1, x)); }
+function yumusak(x) { x = sinir(x); return 1 - Math.pow(1 - x, 3); }
+function geriSek(x) { x = sinir(x); var c1 = 1.4, c3 = c1 + 1; return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2); }
+
+function ciz(t) {
+  var tt = t - GIRIS; // seslendirme GIRIS saniye sonra başlar
+  document.querySelectorAll(".daire").forEach(function (d) {
+    var i = +d.dataset.i;
+    d.style.transform = "translate(" + Math.sin(t * 0.6 + i) * 40 + "px," + Math.cos(t * 0.5 + i * 2) * 50 + "px) scale(" + (1 + Math.sin(t * 0.8 + i) * 0.05) + ")";
+  });
+  ZAMAN.forEach(function (z, si) {
+    var giris = si === 0 ? yumusak((t) / 0.4) : yumusak((tt - z.bas) / 0.35);
+    var cikis = si === ZAMAN.length - 1 ? 1 : 1 - yumusak((tt - z.son + 0.3) / 0.3);
+    var gorunur = Math.min(giris, cikis);
+    var bolum = z.dugum.querySelector(".bolum"), zem = z.dugum.querySelector(".sahne-zemin"), cizim = z.dugum.querySelector(".cizim");
+    var yerel = si === 0 ? t : tt - z.bas;
+    bolum.style.opacity = gorunur;
+    bolum.style.transform = "translateY(" + (1 - cikis) * -60 + "px)";
+    if (zem) zem.style.opacity = Math.min(si === 0 ? 1 : yumusak((tt - z.bas) / 0.3), 1 - yumusak((tt - z.son + 0.2) / 0.4));
+    if (cizim) {
+      var cg = yumusak((yerel - 0.3) / 0.7);
+      cizim.style.opacity = Math.min(cg, cikis);
+      cizim.style.transform = "translateY(" + (1 - geriSek((yerel - 0.3) / 0.8)) * 160 + "px)";
+      cizim.querySelectorAll(".buhar").forEach(function (b, i) { b.style.transform = "translateY(" + (-((t * 30 + i * 20) % 40)) + "px)"; b.style.opacity = 0.5 * (1 - ((t * 0.75 + i * 0.5) % 1)); });
+      var sayfa = cizim.querySelector(".sayfa"); if (sayfa) sayfa.style.transform = "scaleX(" + Math.cos(Math.min(1, Math.max(0, (yerel - 1.2) / 1.2)) * Math.PI) + ")";
+      cizim.querySelectorAll(".yaprak-c").forEach(function (y) { var i = +y.dataset.i; y.setAttribute("transform", "translate(" + (Math.cos(i * 0.9 + t * 0.4) * 260) + " " + (Math.sin(i * 1.7 + t * 0.6) * 160) + ") rotate(" + (i * 50 + t * 30) + ")"); });
+    }
+    bolum.querySelectorAll(":scope > .oge").forEach(function (o, k) {
+      var gecikme = 0.15 + k * 0.22;
+      var p = (yerel - gecikme) / 0.55;
+      var kel = o.querySelectorAll(".kelime");
+      if (kel.length) {
+        o.style.opacity = 1; o.style.transform = "none";
+        var hiz = Math.min(0.12, Math.max(0.05, ((z.son - z.bas) * 0.55) / kel.length));
+        kel.forEach(function (w, j) {
+          var q = (yerel - gecikme - j * hiz) / 0.4;
+          w.style.opacity = sinir(q * 1.8);
+          w.style.transform = "translateY(" + (1 - geriSek(q)) * 50 + "px) scale(" + (0.9 + 0.1 * geriSek(q)) + ")";
+          if (w.classList.contains("vurgu")) w.style.setProperty("--cizgi", yumusak((q - 0.6) / 0.6));
+        });
+      } else {
+        o.style.opacity = sinir(p * 1.6);
+        var x = o.classList.contains("kart") ? (k % 2 ? 1 : -1) * (1 - yumusak(p)) * 140 : 0;
+        o.style.transform = "translate(" + x + "px," + (1 - geriSek(p)) * 90 + "px) scale(" + (0.94 + 0.06 * geriSek(p)) + ")";
+        if (o.classList.contains("nabiz") && p >= 1) o.style.transform = "scale(" + (1 + 0.04 * Math.sin((yerel - gecikme) * 6)) + ")";
+      }
+    });
+  });
+  var k = document.querySelector(".kapanis");
+  var kb = TOPLAM - KAPANIS;
+  var kp = yumusak((t - kb) / 0.45);
+  k.style.opacity = kp;
+  var img = k.querySelector("img");
+  img.style.transform = "scale(" + (0.7 + 0.3 * geriSek((t - kb - 0.1) / 0.7)) + ") rotate(" + (1 - yumusak((t - kb) / 0.9)) * -25 + "deg)";
+}
+</script>
+</body>
+</html>
