@@ -70,67 +70,68 @@ function kelimeler(metin) {
 
 // Sahne çizimleri (fotoğraf yerine; çocuk yüzü içermez)
 var CIZIMLER = {
-  kitapCay: function (renk, koyu) {
-    // Solda kitap yığını ve arkada açık kitap; sağda bakır ikili çaydanlık ve tabakta ince belli bardak.
+  kitapCay: function (renk, koyu, sahne) {
+    // Solda kitap kapağı maketi; sağda bakır ikili çaydanlık ve tabakta ince belli bardak.
     // Animasyon (ciz): demlik kalkar, bardağa çay döker, bardak dolar, buhar yükselir.
-    var c = koyu;
-    var kitap = function (x, y, w, h, kapak, sirt, aci) {
-      var cizgi = '';
-      for (var i = 1; i < 4; i++) cizgi += '<path d="M' + (x + 14) + ' ' + (y + 8 + i * (h - 16) / 4) + ' L' + (x + w - 60) + ' ' + (y + 8 + i * (h - 16) / 4) + '" stroke="#c9c2b8" stroke-width="2"/>';
-      return '<g transform="rotate(' + aci + ' ' + (x + w / 2) + ' ' + (y + h / 2) + ')">' +
-        '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="12" fill="' + kapak + '" stroke="' + c + '" stroke-width="5"/>' +
-        '<rect x="' + (x + 6) + '" y="' + (y + 8) + '" width="' + (w - 54) + '" height="' + (h - 16) + '" rx="5" fill="#fbf8f2"/>' + cizgi +
-        '<rect x="' + (x + w - 44) + '" y="' + y + '" width="44" height="' + h + '" rx="12" fill="' + sirt + '"/>' +
-        '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="12" fill="none" stroke="' + c + '" stroke-width="5"/></g>';
-    };
-    var bardak = "M0 0 C2 40 22 72 22 110 C22 140 14 158 14 176 L90 176 C90 158 82 140 82 110 C82 72 102 40 104 0 Z";
-    return '<svg width="840" height="500" viewBox="0 0 840 500">' +
+    var c = koyu, s = sahne || {};
+    var kAd = kacis(s.kitapAdi || s.baslik || ""), kYazar = kacis(s.kitapYazari || s.alt || "");
+    var adSatir = kAd.split(" ");
+    var bardak = "M2 0 C6 34 30 58 30 90 C30 108 16 122 16 146 C16 164 24 176 36 176 L68 176 C80 176 88 164 88 146 C88 122 74 108 74 90 C74 58 98 34 102 0 Z";
+    var kapak =
+      '<g transform="translate(96 120) skewY(4.8)">' +
+      '<rect x="0" y="0" width="226" height="316" rx="6" fill="url(#kapakZemin)"/>' +
+      '<circle cx="150" cy="190" r="62" fill="#f1a27c" opacity="0.9"/>' +
+      '<circle cx="96" cy="212" r="38" fill="' + renk + '" opacity="0.85"/>' +
+      '<path transform="translate(124 150) scale(0.9)" d="M0 8 C-10 -4 -26 4 -18 18 L0 34 L18 18 C26 4 10 -4 0 8 Z" fill="#fff" opacity="0.95"/>' +
+      '<text x="20" y="54" font-family="Quicksand" font-weight="700" font-size="30" fill="' + c + '">' + (adSatir[0] || "") + '</text>' +
+      '<text x="20" y="90" font-family="Quicksand" font-weight="700" font-size="30" fill="' + c + '">' + adSatir.slice(1).join(" ") + '</text>' +
+      '<rect x="20" y="104" width="46" height="5" rx="2.5" fill="' + renk + '"/>' +
+      '<text x="20" y="292" font-family="DM Sans" font-weight="700" font-size="17" letter-spacing="1" fill="' + c + '" opacity="0.8">' + kYazar.toUpperCase() + '</text>' +
+      '<rect x="0" y="0" width="226" height="316" rx="6" fill="url(#parlak)"/>' +
+      '<rect x="0" y="0" width="226" height="316" rx="6" fill="none" stroke="' + c + '" stroke-width="4"/></g>';
+    return '<svg width="880" height="500" viewBox="0 0 880 500">' +
       '<defs><radialGradient id="isik"><stop offset="0" stop-color="#f6b860" stop-opacity="0.55"/><stop offset="1" stop-color="#f6b860" stop-opacity="0"/></radialGradient>' +
       '<linearGradient id="cay" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d4561c"/><stop offset="1" stop-color="#7a1f0e"/></linearGradient>' +
       '<linearGradient id="bakir" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffb04a"/><stop offset="0.55" stop-color="#ee7a22"/><stop offset="1" stop-color="#b8461a"/></linearGradient>' +
-      '<linearGradient id="kitapIc" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#f59e2c"/><stop offset="0.5" stop-color="#fbbf4a"/><stop offset="1" stop-color="#f59e2c"/></linearGradient>' +
+      '<linearGradient id="kapakZemin" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fbeadb"/><stop offset="1" stop-color="#f3d2bd"/></linearGradient>' +
+      '<linearGradient id="parlak" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#000" stop-opacity="0.12"/><stop offset="0.08" stop-color="#fff" stop-opacity="0.35"/><stop offset="0.2" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity="0.08"/></linearGradient>' +
       '<clipPath id="bardakIc"><path d="' + bardak + '"/></clipPath></defs>' +
-      '<ellipse cx="420" cy="478" rx="390" ry="20" fill="' + c + '" opacity="0.08"/>' +
-      '<circle class="isik" cx="532" cy="350" r="128" fill="url(#isik)"/>' +
-      // arkada açık kitap
-      '<path d="M48 186 Q120 150 196 178 L196 392 Q120 366 48 398 Z" fill="#fff" stroke="' + c + '" stroke-width="5" stroke-linejoin="round"/>' +
-      '<path d="M344 186 Q272 150 196 178 L196 392 Q272 366 344 398 Z" fill="#fff" stroke="' + c + '" stroke-width="5" stroke-linejoin="round"/>' +
-      '<path d="M60 178 Q124 146 196 172 L196 384 Q124 358 60 388 Z" fill="url(#kitapIc)"/>' +
-      '<path d="M332 178 Q268 146 196 172 L196 384 Q268 358 332 388 Z" fill="url(#kitapIc)"/>' +
-      '<path d="M196 172 L196 392" stroke="' + c + '" stroke-width="5"/>' +
-      '<rect x="188" y="230" width="16" height="70" rx="4" fill="#ffd36b" opacity="0.9"/>' +
-      // önde kitap yığını
-      kitap(120, 412, 300, 52, "#cfe24a", "#8dbf3a", 0) +
-      kitap(150, 360, 270, 50, "#ffb22c", "#f08c12", -3) +
-      kitap(130, 312, 250, 48, "#e8322b", "#b8141f", 4) +
-      // ince belli bardak, tabağında
-      '<g transform="translate(470 244) scale(1.2)">' +
+      '<ellipse cx="420" cy="472" rx="390" ry="20" fill="' + c + '" opacity="0.08"/>' +
+      '<ellipse cx="215" cy="466" rx="150" ry="14" fill="' + c + '" opacity="0.14"/>' +
+      '<circle class="isik" cx="470" cy="380" r="100" fill="url(#isik)"/>' +
+      // kitap maketi: sırt + kapak
+      '<path d="M66 138 L96 120 L96 436 L66 452 Z" fill="' + renk + '" stroke="' + c + '" stroke-width="4" stroke-linejoin="round"/>' +
+      '<path d="M74 140 L88 132 L88 430 L74 438 Z" fill="#fff" opacity="0.18"/>' +
+      kapak +
+      // ince belli bardak (oval, yumuşak hatlı), tabağında
+      '<g transform="translate(423 297) scale(0.9)">' +
       '<ellipse cx="52" cy="190" rx="86" ry="20" fill="#fff" stroke="' + c + '" stroke-width="5"/>' +
       '<ellipse cx="52" cy="190" rx="62" ry="12" fill="none" stroke="#c8102e" stroke-width="4" opacity="0.8"/>' +
       '<ellipse cx="52" cy="190" rx="74" ry="16" fill="none" stroke="#d9a441" stroke-width="3" opacity="0.9"/>' +
       '<g clip-path="url(#bardakIc)"><rect x="-5" y="0" width="115" height="180" fill="#fff" opacity="0.55"/><rect class="cay-dolu" x="-5" y="24" width="115" height="160" fill="url(#cay)"/>' +
-      '<path d="M12 30 C17 58 31 82 31 110" stroke="#fff" stroke-width="6" fill="none" stroke-linecap="round" opacity="0.45"/></g>' +
+      '<path d="M13 24 C19 50 36 70 37 92" stroke="#fff" stroke-width="6" fill="none" stroke-linecap="round" opacity="0.45"/>' +
+      '<path d="M24 130 C22 146 26 160 34 168" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.35"/></g>' +
       '<path d="' + bardak + '" fill="none" stroke="' + c + '" stroke-width="5" stroke-linejoin="round"/>' +
-      '<ellipse cx="52" cy="0" rx="52" ry="7" fill="none" stroke="' + c + '" stroke-width="4"/>' +
+      '<ellipse cx="52" cy="0" rx="50" ry="7" fill="none" stroke="' + c + '" stroke-width="4"/>' +
       '<path class="buhar b1" d="M30 -12 C14 -38 46 -52 30 -80" stroke="' + c + '" stroke-width="6" fill="none" stroke-linecap="round" opacity="0.5"/>' +
       '<path class="buhar b2" d="M54 -12 C38 -38 70 -52 54 -80" stroke="' + c + '" stroke-width="6" fill="none" stroke-linecap="round" opacity="0.5"/>' +
       '<path class="buhar b3" d="M78 -12 C62 -38 94 -52 78 -80" stroke="' + c + '" stroke-width="6" fill="none" stroke-linecap="round" opacity="0.5"/></g>' +
       // akan çay
-      '<path class="cay-akis" d="M0 0" stroke="#b33a14" stroke-width="7" stroke-linecap="round" fill="none" opacity="0"/>' +
-      // alt çaydanlık
-      '<path d="M652 392 C622 386 606 360 596 330 C592 320 600 316 606 324 C618 344 634 360 660 366" fill="url(#bakir)" stroke="' + c + '" stroke-width="5" stroke-linejoin="round"/>' +
-      '<path d="M796 360 C836 360 836 430 790 432" fill="none" stroke="' + c + '" stroke-width="9" stroke-linecap="round"/>' +
-      '<ellipse cx="720" cy="400" rx="86" ry="68" fill="url(#bakir)" stroke="' + c + '" stroke-width="5"/>' +
-      '<path d="M670 360 Q700 384 690 430" stroke="#ffd59a" stroke-width="8" fill="none" stroke-linecap="round" opacity="0.6"/>' +
-      '<ellipse cx="720" cy="334" rx="52" ry="10" fill="#d8692a" stroke="' + c + '" stroke-width="5"/>' +
-      // üst demlik (hareketli)
+      '<path class="cay-akis" d="M0 0" stroke="#b33a14" stroke-width="6" stroke-linecap="round" fill="none" opacity="0"/>' +
+      // çaydanlık (1.3 kat büyük, tabanı 720,468)
+      '<g transform="translate(720 468) scale(1.3) translate(-720 -468)">' +
+      '<path d="M652 392 C622 386 606 360 596 330 C592 320 600 316 606 324 C618 344 634 360 660 366" fill="url(#bakir)" stroke="' + c + '" stroke-width="4.5" stroke-linejoin="round"/>' +
+      '<path d="M796 360 C836 360 836 430 790 432" fill="none" stroke="' + c + '" stroke-width="8" stroke-linecap="round"/>' +
+      '<ellipse cx="720" cy="400" rx="86" ry="68" fill="url(#bakir)" stroke="' + c + '" stroke-width="4.5"/>' +
+      '<path d="M670 360 Q700 384 690 430" stroke="#ffd59a" stroke-width="7" fill="none" stroke-linecap="round" opacity="0.6"/>' +
+      '<ellipse cx="720" cy="334" rx="52" ry="10" fill="#d8692a" stroke="' + c + '" stroke-width="4.5"/>' +
       '<g class="demlik">' +
-      '<path d="M676 290 C648 286 634 266 626 246 C622 238 630 234 636 240 C646 256 660 268 682 272" fill="url(#bakir)" stroke="' + c + '" stroke-width="5" stroke-linejoin="round"/>' +
-      '<path d="M768 258 C798 258 798 312 764 312" fill="none" stroke="' + c + '" stroke-width="8" stroke-linecap="round"/>' +
-      '<ellipse cx="720" cy="284" rx="56" ry="46" fill="url(#bakir)" stroke="' + c + '" stroke-width="5"/>' +
-      '<path d="M688 262 Q704 276 698 304" stroke="#ffd59a" stroke-width="7" fill="none" stroke-linecap="round" opacity="0.6"/>' +
-      '<path d="M690 244 Q720 222 750 244 Z" fill="#e2702a" stroke="' + c + '" stroke-width="5" stroke-linejoin="round"/>' +
-      '<circle cx="720" cy="226" r="11" fill="#c8481a" stroke="' + c + '" stroke-width="5"/></g>' +
+      '<path d="M676 290 C648 286 634 266 626 246 C622 238 630 234 636 240 C646 256 660 268 682 272" fill="url(#bakir)" stroke="' + c + '" stroke-width="4.5" stroke-linejoin="round"/>' +
+      '<path d="M768 258 C798 258 798 312 764 312" fill="none" stroke="' + c + '" stroke-width="7" stroke-linecap="round"/>' +
+      '<ellipse cx="720" cy="284" rx="56" ry="46" fill="url(#bakir)" stroke="' + c + '" stroke-width="4.5"/>' +
+      '<path d="M688 262 Q704 276 698 304" stroke="#ffd59a" stroke-width="6" fill="none" stroke-linecap="round" opacity="0.6"/>' +
+      '<path d="M690 244 Q720 222 750 244 Z" fill="#e2702a" stroke="' + c + '" stroke-width="4.5" stroke-linejoin="round"/>' +
+      '<circle cx="720" cy="226" r="11" fill="#c8481a" stroke="' + c + '" stroke-width="4.5"/></g></g>' +
       '</svg>';
   },
   yapraklar: function (renk) {
@@ -226,7 +227,7 @@ function sahneKur(s, renk, zemin, koyu) {
   if (s.cizim) { b.style.justifyContent = "flex-start"; b.style.paddingTop = "40px"; }
   var paket = document.createElement("div");
   if (s.koyuZemin) paket.appendChild(el("div", "sahne-zemin", null, { background: "radial-gradient(900px 700px at 80% 10%, rgba(255,255,255,0.18), transparent 60%), " + renk }));
-  if (s.cizim && CIZIMLER[s.cizim]) paket.appendChild(el("div", "cizim", CIZIMLER[s.cizim](renk, koyu)));
+  if (s.cizim && CIZIMLER[s.cizim]) paket.appendChild(el("div", "cizim", CIZIMLER[s.cizim](renk, koyu, s)));
   paket.appendChild(b);
   return paket;
 }
@@ -291,17 +292,18 @@ function ciz(t) {
       if (dem) {
         var hr = yumusak((yerel - 0.9) / 0.7) * (1 - yumusak((yerel - 4.3) / 0.7));
         var eg = yumusak((yerel - 1.4) / 0.5) * (1 - yumusak((yerel - 3.9) / 0.45));
-        var dx = -82 * hr, dy = -108 * hr, a = -40 * eg;
+        var dx = -96.8 * hr, dy = -32 * hr, a = -45 * eg;
         dem.setAttribute("transform", "translate(" + dx + " " + dy + ") rotate(" + a + " 720 280)");
         var r = a * Math.PI / 180, ox = -90, oy = -32;
-        var uX = 720 + dx + ox * Math.cos(r) - oy * Math.sin(r), uY = 280 + dy + ox * Math.sin(r) + oy * Math.cos(r);
+        var lX = 720 + dx + ox * Math.cos(r) - oy * Math.sin(r), lY = 280 + dy + ox * Math.sin(r) + oy * Math.cos(r);
+        var uX = 720 + (lX - 720) * 1.3, uY = 468 + (lY - 468) * 1.3; // çaydanlık grubu 1.3 ölçekli
         var sv = yumusak((yerel - 1.8) / 1.9);
         var ust = 176 - sv * 152;
         var dolu = cizim.querySelector(".cay-dolu"); dolu.setAttribute("y", ust); dolu.setAttribute("height", 184 - ust);
         var akis = sinir((yerel - 1.72) / 0.15) * (1 - sinir((yerel - 3.75) / 0.15));
-        var yuzey = 244 + 1.2 * ust;
+        var yuzey = 297 + 0.9 * ust;
         var ak = cizim.querySelector(".cay-akis");
-        ak.setAttribute("d", "M" + uX + " " + uY + " Q" + (uX - 6) + " " + (uY + 20) + " " + (uX - 8) + " " + yuzey);
+        ak.setAttribute("d", "M" + uX + " " + uY + " Q" + (uX - 4) + " " + (uY + 20) + " " + (uX - 6) + " " + yuzey);
         ak.setAttribute("opacity", akis * 0.95);
         buharGuc = yumusak((yerel - 3.3) / 0.9);
       }
