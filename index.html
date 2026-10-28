@@ -149,7 +149,7 @@ if(fm.kvkkConsent&&!profile?.kvkkDate)data.kvkkDate=new Date().toISOString();
 // Reklam/duyuru izni değiştiyse tarihi kaydedilir; okul değişikliği İYS'ye işler
 data.marketingConsent=fm.marketingEposta===true||fm.marketingTelefon===true;
 if(fm.marketingEposta!==(profile?.marketingEposta||false)||fm.marketingTelefon!==(profile?.marketingTelefon||false)){data.marketingTarih=new Date().toISOString();data.marketingIysGuncellenecek=true}
-await fsSave("etkinlik_profiller",user.email,data);
+await fsSave("etkinlik_profiller",user.email.toLowerCase(),data);
 setProfile(data);setSaved(true);setTimeout(()=>setSaved(false),2000);
 };
 const tabs=[{k:"info",l:"👤 Bilgilerim"},{k:"children",l:"👶 Çocuklarım"},{k:"events",l:"📅 Etkinliklerim"},{k:"consent",l:"📋 İzinler"}];
@@ -205,16 +205,17 @@ const[email,setEmail]=useState("");const[name,setName]=useState("");const[status
 const submit=async()=>{
 if(!email||!email.includes("@")||!onay)return setStatus("error");
 try{
-await fsSave("etkinlik_aboneler",email,{email,name:name||"",subscribedAt:new Date().toISOString(),active:true,izin:{metin:IZIN_METINLERI.bultenAbonelik,surum:IZIN_METIN_SURUMU,tarih:new Date().toISOString(),iysYuklendi:false}});
+const ep=email.trim().toLowerCase();await fbDb.collection("etkinlik_aboneler").doc(ep).set({email:ep,name:name||"",subscribedAt:new Date().toISOString(),active:true,izin:{metin:IZIN_METINLERI.bultenAbonelik,surum:IZIN_METIN_SURUMU,tarih:new Date().toISOString(),iysYuklendi:false}});
 setStatus("ok");setEmail("");setName("");setOnay(false);
 setTimeout(()=>setStatus(""),3000);
-}catch(e){setStatus("error")}
+}catch(e){console.error("Abonelik kaydedilemedi:",e);setStatus("kayitHatasi")}
 };
 if(status==="ok")return<div style={{background:"rgba(255,255,255,0.15)",borderRadius:12,padding:"14px 20px",maxWidth:420,margin:"0 auto"}}><span style={{fontFamily:ff,fontWeight:700,color:"#fff",fontSize:14}}>✅ Abone oldunuz! Yeni etkinliklerde bilgilendirileceksiniz.</span></div>;
 return(<div style={{maxWidth:420,margin:"0 auto",display:"flex",gap:8,flexWrap:"wrap",justifyContent:"center"}}>
 <input value={name} onChange={e=>setName(e.target.value)} placeholder="Adınız" style={{padding:"10px 14px",borderRadius:10,border:"2px solid rgba(255,255,255,0.3)",background:"rgba(255,255,255,0.1)",color:"#fff",fontFamily:ff,fontSize:13,outline:"none",flex:"1 1 120px",boxSizing:"border-box"}}/>
 <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="E-posta adresiniz" type="email" style={{padding:"10px 14px",borderRadius:10,border:status==="error"?"2px solid #ef5350":"2px solid rgba(255,255,255,0.3)",background:"rgba(255,255,255,0.1)",color:"#fff",fontFamily:ff,fontSize:13,outline:"none",flex:"2 1 180px",boxSizing:"border-box"}}/>
 <button onClick={submit} style={{padding:"10px 20px",background:ALTIN,color:"#14213d",border:"none",borderRadius:10,fontFamily:ff,fontWeight:800,fontSize:13,cursor:"pointer",whiteSpace:"nowrap"}}>Abone Ol</button>
+{status==="kayitHatasi"&&<div role="alert" style={{flex:"1 1 100%",color:"#ffd2c2",fontFamily:ff,fontSize:12,fontWeight:700}}>Abonelik kaydedilemedi. Bu adres zaten kayıtlı olabilir; değilse lütfen biraz sonra tekrar deneyin.</div>}
 <label style={{flex:"1 1 100%",display:"flex",gap:8,alignItems:"flex-start",textAlign:"left",fontFamily:ff,fontSize:11,lineHeight:1.5,color:status==="error"&&!onay?"#ffcdd2":"rgba(255,255,255,0.85)",cursor:"pointer"}}><input type="checkbox" checked={onay} onChange={e=>setOnay(e.target.checked)} style={{marginTop:2,width:15,height:15,flexShrink:0}}/><span>{IZIN_METINLERI.bultenAbonelik} <a href={AYDINLATMA_LINKI} target="_blank" rel="noopener noreferrer" style={{color:"#fff"}}>Aydınlatma Metni</a></span></label>
 </div>)}
 
@@ -406,7 +407,7 @@ const[ex,setEx]=useState({heardFrom:"",allergies:profile?.allergies||"",emergenc
 // İzin kutuları her kayıtta boş gelir (İYS: onay kutusu önceden işaretlenemez)
 const[co,setCo]=useState({photo:false,kvkk:false,ticariEposta:false,ticariTelefon:false,saglik:false});
 const[payMethod,setPayMethod]=useState("");
-const[done,setDone]=useState(false);const[err,setErr]=useState({});
+const[done,setDone]=useState(false);const[err,setErr]=useState({});const[gonderiliyor,setGonderiliyor]=useState(false);
 
 const val=()=>{const e={};
 if(step===1){(yetiskinEtkinligi?["name","surname","phone","email","district"]:["name","surname","phone","email","address","district"]).forEach(f=>{if(!p[f]?.trim())e["p"+f]=true});if(p.email&&!p.email.includes("@"))e.pemail=true}
@@ -421,7 +422,7 @@ setErr(e);return!Object.keys(e).length};
 const updCh=(i,f,v)=>{const c=[...ch];c[i]={...c[i],[f]:v};setCh(c)};
 
 // 🆕 totalAttendees hesaplama + isBirCicekFamily + bircicekReferans
-const submit=()=>{if(!val())return;
+const submit=async()=>{if(!val()||gonderiliyor)return;
 const yetiskin=kTuru.yetiskinSecimi?(parseInt(p.attendeeCount)||1):1;
 const cocukSayisi=ch.length;
 const totalAttendees=yetiskinEtkinligi?yetiskin:yetiskin+cocukSayisi;
@@ -441,12 +442,15 @@ const reg={
   sadeceYetiskin:yetiskinEtkinligi,
   izinler:izinKaydiOlustur({aydinlatma:co.kvkk,foto:co.photo,ticariEposta:co.ticariEposta,ticariTelefon:co.ticariTelefon,eposta:p.email,telefon:p.phone}),
   saglikRizasi:(!yetiskinEtkinligi&&ex.allergies.trim())?{verildi:co.saglik===true,tarih:new Date().toISOString(),surum:IZIN_METIN_SURUMU}:null,
-  userEmail:user?.email||"",
+  userEmail:(user?.email||"").toLowerCase(),
   totalAttendees:totalAttendees,
   isBirCicekFamily:isBirCicekFamily,
   bircicekReferans:bircicekReferans
 };
-onSubmit(reg);
+setGonderiliyor(true);
+const kaydedildi=await onSubmit(reg);
+setGonderiliyor(false);
+if(!kaydedildi){setErr({genel:"Kaydınız şu anda kaydedilemedi. Lütfen birkaç dakika sonra tekrar deneyin ya da 0216 393 54 57'yi arayın."});return}
 sendRegistrationEmails(event,reg,settings);
 setDone(true)};
 
@@ -521,7 +525,8 @@ return(<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",displa
 
 </div>
 
-<div style={{padding:"14px 20px",borderTop:"1px solid #e8ecf4",display:"flex",justifyContent:"space-between",background:"#fafbfd"}}>{step>1?<button onClick={()=>setStep(s=>s-1)} style={{...btnS,borderColor:"#ccc",color:"#666",fontSize:12}}>← Geri</button>:<div/>}{step<totalSteps?<button onClick={()=>{if(val())setStep(s=>s+1)}} style={{...btnP,fontSize:13}}>Devam →</button>:<button onClick={submit} style={{...btnP,background:"linear-gradient(135deg,#e2691f,#c2410c)"}}>🌿 Kaydı Tamamla</button>}</div>
+<div style={{padding:"14px 20px",borderTop:"1px solid #e8ecf4",display:"flex",justifyContent:"space-between",background:"#fafbfd"}}>{step>1?<button onClick={()=>setStep(s=>s-1)} style={{...btnS,borderColor:"#ccc",color:"#666",fontSize:12}}>← Geri</button>:<div/>}{step<totalSteps?<button onClick={()=>{if(val())setStep(s=>s+1)}} style={{...btnP,fontSize:13}}>Devam →</button>:<button onClick={submit} disabled={gonderiliyor} style={{...btnP,background:"linear-gradient(135deg,#e2691f,#c2410c)",opacity:gonderiliyor?0.6:1}}>{gonderiliyor?"Kaydediliyor…":"Kaydı Tamamla"}</button>}</div>
+{err.genel&&<div role="alert" style={{margin:"0 20px 14px",background:"#fef2f2",border:"1px solid #fca5a5",color:"#991b1b",borderRadius:10,padding:"10px 14px",fontFamily:ff,fontSize:13,fontWeight:600}}>{err.genel}</div>}
 
 </div></div>)}
 /* ═══ ADMIN COMPONENTS ═══ */
@@ -896,7 +901,7 @@ return()=>{unsubEvents();if(unsubRegs)unsubRegs();checkAuth()};
 },[]);
 
 // Profil yükle
-useEffect(()=>{if(!fbUser)return;async function lp(){try{const d=await fbDb.collection("etkinlik_profiller").doc(fbUser.email).get();if(d.exists)setProfile(d.data())}catch(e){}}lp()},[fbUser]);
+useEffect(()=>{if(!fbUser)return;async function lp(){try{const d=await fbDb.collection("etkinlik_profiller").doc(fbUser.email.toLowerCase()).get();if(d.exists)setProfile(d.data())}catch(e){}}lp()},[fbUser]);
 
 // Veli mi kontrolü
 useEffect(()=>{
@@ -922,8 +927,9 @@ const googleLogout=()=>fbAuth.signOut();
 
 // 🆕 Yeni kayıt - filledSpots'u atomik olarak artır (public sayım için)
 const handleNewReg=async(reg)=>{
-const id=await fsAdd("etkinlik_kayitlari",reg);
-if(id)setRegs(p=>[...p,{...reg,_docId:id}]);
+let id=null;
+try{id=(await fbDb.collection("etkinlik_kayitlari").add(reg)).id}catch(e){console.error("Kayıt yazılamadı:",e);return false}
+setRegs(p=>[...p,{...reg,_docId:id}]);
 
 // 🆕 Etkinliğin filledSpots'unu atomik artır - giriş yapmamış kullanıcılar da bu sayıyı görebilir
 const ev=events.find(e=>e.id===reg.eventId);
@@ -956,9 +962,10 @@ if(iz.foto?.verildi)pData.photoConsent=true;
 if(iz.ticariEposta?.verildi){pData.marketingEposta=true;pData.marketingConsent=true;pData.marketingTarih=iz.tarih}
 if(iz.ticariTelefon?.verildi){pData.marketingTelefon=true;pData.marketingConsent=true;pData.marketingTarih=iz.tarih}
 }
-await fsSave("etkinlik_profiller",fbUser.email,{...profile,...pData});
+await fsSave("etkinlik_profiller",fbUser.email.toLowerCase(),{...profile,...pData});
 setProfile(p=>({...p,...pData}))
 }
+return true;
 };
 
 // 🆕 Kayıt başlatma fonksiyonu - Login + audience kontrolü
