@@ -389,7 +389,7 @@ return(<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",displa
 <p style={{fontFamily:ff,fontSize:13,color:"#555",lineHeight:1.7,marginBottom:14,whiteSpace:"pre-line"}}>{ev.fullDesc||ev.shortDesc}</p>
 {ytId&&<div style={{marginBottom:14,borderRadius:10,overflow:"hidden",aspectRatio:"16/9"}}><iframe src={`https://www.youtube.com/embed/${ytId}`} style={{width:"100%",height:"100%",border:"none"}} allowFullScreen/></div>}
 <div style={{marginBottom:14,padding:"10px 14px",background:"#fff8e1",borderRadius:8,border:"1px solid #ffe082"}}><div style={{fontFamily:ff,fontSize:12,color:"#666"}}>{rc}/{ev.capacity} kişi katılıyor — <strong>{ev.capacity-rc>0?`${ev.capacity-rc} yer kaldı`:"Kontenjan dolu"}</strong></div></div>
-<div style={{display:"flex",gap:8}}><button onClick={()=>{onClose();onReg(ev)}} disabled={rc>=ev.capacity} style={{...btnP,flex:1,opacity:rc>=ev.capacity?0.5:1,cursor:rc>=ev.capacity?"not-allowed":"pointer"}}>{rc>=ev.capacity?"❌ Doldu":"🌿 Katıl"}</button><button onClick={onClose} style={btnS}>Kapat</button></div></div></div></div>)}
+<div style={{display:"flex",gap:8}}>{etkinlikBitti(ev)?<div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",background:"#f2efe8",color:"#5b6478",borderRadius:10,fontFamily:ff,fontWeight:700,fontSize:14,padding:"10px 16px"}}>Bu etkinlik sona erdi</div>:<button onClick={()=>{onClose();onReg(ev)}} disabled={rc>=ev.capacity} style={{...btnP,flex:1,opacity:rc>=ev.capacity?0.5:1,cursor:rc>=ev.capacity?"not-allowed":"pointer"}}>{rc>=ev.capacity?"❌ Doldu":"Katıl"}</button>}<button onClick={onClose} style={btnS}>Kapat</button></div></div></div></div>)}
 /* ═══ 🆕 REGISTRATION MODAL (YENİ ÖZELLİKLER) ═══ */
 const emptyChild=()=>({name:"",surname:"",birthDate:"",gender:"",currentSchool:"",specialNeeds:""});
 
@@ -963,6 +963,8 @@ setProfile(p=>({...p,...pData}))
 
 // 🆕 Kayıt başlatma fonksiyonu - Login + audience kontrolü
 const handleRegStart=(ev)=>{
+// Geçmiş etkinliğe kayıt alınmaz
+if(etkinlikBitti(ev))return;
 // Login kontrolü
 if(!fbUser){
 setLoginRequired(ev);
