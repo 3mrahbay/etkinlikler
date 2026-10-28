@@ -22,8 +22,11 @@ Etkinlik tarihi geçmişse atlanır.
   kimlere açık, `instagram.not`). Bilinmeyen hiçbir şey (ücret, kontenjan, ödül) uydurulmaz.
 - 20–28 saniye (yaklaşık 55–75 kelime). İlk cümle bir kanca: kime seslendiğini söyler ("Babalar…", "Anneler…").
 - Adres okutulmaz; "Kayıt bağlantısı profilimizde" denir.
-- Ses: ElevenLabs **Kadir Kayışcı** `j82ax9yhzfYwq9lDvRWL`, model `eleven_v4`, `generations_count: 1`.
-  Duygu etiketleri az ve yerinde: `[warmly]`, `[excited]`, `[short pause]`.
+- Ses (model `eleven_v4`, `generations_count: 1`), katılımcı türüne göre:
+  - `anneler`, `anneCocuk` → kadın sesi **Begonvil** `AHe3yhPzR46IM8ONphwK`
+  - diğerleri (`babalar`, `babaCocuk`, `aile`, `ebeveynler`) → **Kadir Kayışcı** `j82ax9yhzfYwq9lDvRWL`
+- Duygu etiketleri az ve yerinde: `[warmly]`, `[short pause]`, `[pause]`. Bağırır gibi coşku (`[excited]`)
+  yerine, öne çıkacak cümle sır verir gibi kısık söylenir: `[whispers] Aramızda kalsın… okul dışından annelere de açık.`
 - Ses indirilir, `ffmpeg -i ses.mp3 -af silencedetect=noise=-35dB:d=0.35 -f null -` ile duraklar bulunur;
   sahne `agirlik` değerleri bu aralıklara göre verilir.
 
