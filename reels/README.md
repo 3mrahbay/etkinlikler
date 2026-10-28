@@ -46,7 +46,7 @@ Etkinlik tarihi geçmişse atlanır.
 ```
 
 - Renkler `etkinlik-turleri.js` içindeki katılımcı türünden alınır (`renk`, `zemin`); `koyu` aynı tonun çok koyusu.
-- İkonlar: `takvim`, `saat`, `konum`, `kisi`, `kitap`, `ucret`. Çizimler: `kitapCay` (açık kitap + tabakta ince belli çay bardağı), `yapraklar`.
+- İkonlar: `takvim`, `saat`, `konum`, `kisi`, `kitap`, `ucret`. Çizimler: `kitapCay` (kitap yığını + bakır ikili çaydanlık; demlik ince belli bardağa çay döker, bardak dolar, buhar çıkar — sahnenin ilk ~5 sn'si), `yapraklar`.
 - Amblem: sahneye `"amblem": "annelerleKitapKulubu"` eklenirse "Annelerle Kitap Kulübü" başlık yazısı gösterilir
   (Kitap Kulübü gönderilerinde açılış sahnesine konur). `"kapakSaniye": 3.2` ile kapak karesi amblemin göründüğü ana alınır.
 - **Fotoğraf kullanılmaz** (sosyal medyada çocuk yüzü görünmeme kuralı); sahneler çizim ve yazıyla kurulur.
