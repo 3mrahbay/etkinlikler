@@ -3,7 +3,7 @@
 // Bir metin değiştiğinde IZIN_METIN_SURUMU da güncellenir; her kayıt, onay verdiği metnin
 // kendisini ve sürümünü saklar (onayın ispatı veri sorumlusuna aittir).
 
-var IZIN_METIN_SURUMU = "2026-10-28";
+var IZIN_METIN_SURUMU = "2026-10-29";
 var AYDINLATMA_LINKI = "aydinlatma.html";
 var IYS_LINKI = "https://www.iys.org.tr";
 var IZIN_ILETISIM_EPOSTA = "eposta@bircicekkoleji.com";
@@ -31,6 +31,15 @@ var IZIN_METINLERI = {
     "Onayınız İleti Yönetim Sistemi'ne (İYS) kaydedilir. Dilediğiniz zaman, ücretsiz olarak gelen " +
     "iletideki ret seçeneğiyle, iys.org.tr üzerinden ya da " + "eposta@bircicekkoleji.com" +
     " adresine yazarak vazgeçebilirsiniz.",
+
+  // Etkinlik sonrası yorum/fotoğraf paylaşımı: isteğe bağlı açık rıza; verilmese de yorum ulaşır
+  yorumPaylasim:
+    "Yorumumun ve yüklediğim fotoğrafların, adım ve soyadımın baş harfiyle, Bir Çiçek Koleji Anaokulu'nun " +
+    "web sitesinde ve sosyal medya hesaplarında paylaşılmasına açık rıza veriyorum. Fotoğraflarda başka " +
+    "kişiler yer alıyorsa onların da onayını aldığımı beyan ederim.",
+  yorumPaylasimNot:
+    "İsteğe bağlıdır; işaretlemeseniz de yorumunuz bize ulaşır. Paylaşılan fotoğraflarda çocukların yüzleri " +
+    "kapatılır. İzninizi dilediğiniz zaman eposta@bircicekkoleji.com adresine yazarak geri alabilirsiniz.",
 
   // İsteğe bağlı izinlerin ortak notu
   istegeBagliNot: "Bu izinleri vermeseniz de kaydınız tamamlanır.",

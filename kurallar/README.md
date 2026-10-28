@@ -21,3 +21,10 @@ Blok, zeky-backend `prod-work/rules-gizlilik/firestore.rules` üzerine eklenerek
 1–20 artar, profil yalnız sahibine, ayarlar herkese okunur, bülten aboneliği yalnız beklenen
 alanlarla, yorumu yalnız kaydı olan veli yazar, herkese açık okuma yalnız onaylı+izinli+seçili
 yorumlarda). Hepsi beklenen sonucu verdi.
+
+## Storage kuralı (yorum fotoğrafları)
+
+`storage-etkinlik-yorumlari.rules`: Firebase › Storage › Rules içinde `match /b/{bucket}/o {`
+satırının altına, mevcut fonksiyonlardan (`adminMi()` dahil) sonra yapıştırıp **Publish**.
+Veli yalnız kendi klasörüne (`etkinlik_yorumlari/{uid}/`) 5 MB altı görsel yükleyebilir;
+dosyaları yalnız yönetici görür ve siler. Fotoğrafların herkese açık bağlantısı oluşturulmaz.
