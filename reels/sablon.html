@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<title>Etkinlik Reels şablonu</title>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&family=DM+Sans:wght@500;700;800&family=Chewy&family=Patrick+Hand&display=swap" rel="stylesheet">
+<style>
+/* 1080×1920 Reels sahnesi. Instagram arayüzü üstte ~250px, altta ~420px, sağda ~150px yer kaplar;
+   önemli içerik x: 90–900, y: 280–1480 arasında tutulur. */
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1080px;height:1920px;overflow:hidden;background:#000}
+#sahne{position:relative;width:1080px;height:1920px;overflow:hidden;font-family:'DM Sans',sans-serif}
+.zemin{position:absolute;inset:0}
+.daire{position:absolute;border-radius:50%}
+.yaprak{position:absolute;width:120px;height:120px}
+.bolum{position:absolute;left:90px;right:180px;top:300px;bottom:440px;display:flex;flex-direction:column;justify-content:center;gap:34px;opacity:0}
+.oge{opacity:0;will-change:transform,opacity}
+.ust-rozet{align-self:flex-start;font-weight:800;font-size:34px;letter-spacing:2px;padding:14px 26px;border-radius:999px}
+.kanca{font-family:'Quicksand',sans-serif;font-weight:700;font-size:118px;line-height:1.05}
+.kanca-alt{font-family:'Quicksand',sans-serif;font-weight:600;font-size:64px;line-height:1.2}
+.baslik{font-family:'Quicksand',sans-serif;font-weight:700;font-size:96px;line-height:1.08}
+.alt{font-size:46px;font-weight:700;line-height:1.35}
+.metin{font-family:'Quicksand',sans-serif;font-weight:600;font-size:66px;line-height:1.28}
+.kart{display:flex;align-items:center;gap:30px;background:#fff;border-radius:36px;padding:30px 36px;box-shadow:0 16px 40px rgba(0,0,0,0.12)}
+.kart-ikon{width:96px;height:96px;border-radius:28px;display:flex;align-items:center;justify-content:center;flex:none}
+.kart-etiket{font-size:30px;font-weight:800;letter-spacing:1.5px;opacity:0.65}
+.kart-deger{font-family:'Quicksand',sans-serif;font-size:56px;font-weight:700;line-height:1.15}
+.rozetler{display:flex;flex-wrap:wrap;gap:18px}
+.rozet{font-size:40px;font-weight:800;padding:16px 28px;border-radius:999px}
+.cta{font-family:'Quicksand',sans-serif;font-weight:700;font-size:84px;line-height:1.1}
+.cta-kutu{align-self:flex-start;font-size:44px;font-weight:800;padding:26px 40px;border-radius:28px;color:#fff}
+.sahne-zemin{position:absolute;inset:0;opacity:0}
+.kelime{display:inline-block;opacity:0;margin-right:0.24em;will-change:transform,opacity}
+.vurgu{position:relative;z-index:0}
+.vurgu::after{content:"";position:absolute;left:-6px;right:-6px;bottom:6px;height:38%;border-radius:12px;z-index:-1;background:var(--vurgu);transform-origin:left;transform:scaleX(var(--cizgi,0))}
+.amblem{align-self:center;width:860px;flex:none;filter:drop-shadow(0 18px 30px rgba(0,0,0,0.22))}
+.amblem svg{display:block;width:100%;height:auto}
+.cizim{position:absolute;left:0;right:0;bottom:440px;height:520px;display:flex;justify-content:center;align-items:flex-end;opacity:0;pointer-events:none}
+.kapanis{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:40px;opacity:0;background:#1d3b28}
+.kapanis img{width:300px;height:300px;border-radius:50%;border:10px solid rgba(255,255,255,0.18)}
+.kapanis .ad{font-family:'Quicksand',sans-serif;font-weight:700;font-size:72px;color:#fff;text-align:center;line-height:1.1}
+.kapanis .yer{font-size:40px;font-weight:700;color:#cdeccf;letter-spacing:2px}
+</style>
+</head>
+<body>
+<div id="sahne"></div>
+<script>
+// ═══ REELS ŞABLONU ═══
+// hazirla(veri, sesSuresi) sahneyi kurar; ciz(t) t. saniyedeki kareyi çizer (kare kare kayıt için belirlenimci).
+
+var V = null, ZAMAN = [], TOPLAM = 0, GIRIS = 0.6, KAPANIS = 2.6;
+
+function el(etiket, sinif, icerik, stil) {
+  var e = document.createElement(etiket);
+  if (sinif) e.className = sinif;
+  if (icerik != null) e.innerHTML = icerik;
+  if (stil) Object.assign(e.style, stil);
+  return e;
+}
+function kacis(s) { return String(s).replace(/[&<>"]/g, function (c) { return ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"})[c]; }); }
+
+// Metni kelime kelime animasyon için böler; *yıldızlı* kelime vurgulanır
+function kelimeler(metin) {
+  return kacis(metin).split(/\s+/).map(function (k) {
+    var v = /^\*(.+)\*([.,!?…]*)$/.exec(k);
+    return v ? '<span class="kelime vurgu">' + v[1] + '</span>' + (v[2] ? '<span class="kelime">' + v[2] + '</span>' : '')
+             : '<span class="kelime">' + k + '</span>';
+  }).join("");
+}
+
+// Sahne çizimleri (fotoğraf yerine; çocuk yüzü içermez)
+var CIZIMLER = {
+  kitapCay: function (renk, koyu, sahne) {
+    // Solda kitap kapağı maketi; sağda bakır ikili çaydanlık ve tabakta ince belli bardak.
+    // Animasyon (ciz): demlik kalkar, bardağa çay döker, bardak dolar, buhar yükselir.
+    var c = koyu, s = sahne || {};
+    var kAd = kacis(s.kitapAdi || s.baslik || ""), kYazar = kacis(s.kitapYazari || s.alt || "");
+    var adSatir = kAd.split(" ");
+    var bardak = "M2 0 C6 34 30 58 30 90 C30 108 16 122 16 146 C16 164 24 176 36 176 L68 176 C80 176 88 164 88 146 C88 122 74 108 74 90 C74 58 98 34 102 0 Z";
+    var kapak =
+      '<g transform="translate(96 120) skewY(4.8)">' +
+      '<rect x="0" y="0" width="226" height="316" rx="6" fill="url(#kapakZemin)"/>' +
+      '<circle cx="150" cy="190" r="62" fill="#f1a27c" opacity="0.9"/>' +
+      '<circle cx="96" cy="212" r="38" fill="' + renk + '" opacity="0.85"/>' +
+      '<path transform="translate(124 150) scale(0.9)" d="M0 8 C-10 -4 -26 4 -18 18 L0 34 L18 18 C26 4 10 -4 0 8 Z" fill="#fff" opacity="0.95"/>' +
+      '<text x="20" y="54" font-family="Quicksand" font-weight="700" font-size="30" fill="' + c + '">' + (adSatir[0] || "") + '</text>' +
+      '<text x="20" y="90" font-family="Quicksand" font-weight="700" font-size="30" fill="' + c + '">' + adSatir.slice(1).join(" ") + '</text>' +
+      '<rect x="20" y="104" width="46" height="5" rx="2.5" fill="' + renk + '"/>' +
+      '<text x="20" y="292" font-family="DM Sans" font-weight="700" font-size="17" letter-spacing="1" fill="' + c + '" opacity="0.8">' + kYazar.toUpperCase() + '</text>' +
+      '<rect x="0" y="0" width="226" height="316" rx="6" fill="url(#parlak)"/>' +
+      '<rect x="0" y="0" width="226" height="316" rx="6" fill="none" stroke="' + c + '" stroke-width="4"/></g>';
+    return '<svg width="880" height="500" viewBox="0 0 880 500">' +
+      '<defs><radialGradient id="isik"><stop offset="0" stop-color="#f6b860" stop-opacity="0.55"/><stop offset="1" stop-color="#f6b860" stop-opacity="0"/></radialGradient>' +
+      '<linearGradient id="cay" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d4561c"/><stop offset="1" stop-color="#7a1f0e"/></linearGradient>' +
+      '<linearGradient id="bakir" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffb04a"/><stop offset="0.55" stop-color="#ee7a22"/><stop offset="1" stop-color="#b8461a"/></linearGradient>' +
+      '<linearGradient id="kapakZemin" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fbeadb"/><stop offset="1" stop-color="#f3d2bd"/></linearGradient>' +
+      '<linearGradient id="parlak" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#000" stop-opacity="0.12"/><stop offset="0.08" stop-color="#fff" stop-opacity="0.35"/><stop offset="0.2" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity="0.08"/></linearGradient>' +
+      '<clipPath id="bardakIc"><path d="' + bardak + '"/></clipPath></defs>' +
+      '<ellipse cx="420" cy="472" rx="390" ry="20" fill="' + c + '" opacity="0.08"/>' +
+      '<ellipse cx="215" cy="466" rx="150" ry="14" fill="' + c + '" opacity="0.14"/>' +
+      '<circle class="isik" cx="470" cy="380" r="100" fill="url(#isik)"/>' +
+      // kitap maketi: sırt + kapak
+      '<path d="M66 138 L96 120 L96 436 L66 452 Z" fill="' + renk + '" stroke="' + c + '" stroke-width="4" stroke-linejoin="round"/>' +
+      '<path d="M74 140 L88 132 L88 430 L74 438 Z" fill="#fff" opacity="0.18"/>' +
+      kapak +
+      // ince belli bardak (oval, yumuşak hatlı), tabağında
+      '<g transform="translate(423 297) scale(0.9)">' +
+      '<ellipse cx="52" cy="190" rx="86" ry="20" fill="#fff" stroke="' + c + '" stroke-width="5"/>' +
+      '<ellipse cx="52" cy="190" rx="62" ry="12" fill="none" stroke="#c8102e" stroke-width="4" opacity="0.8"/>' +
+      '<ellipse cx="52" cy="190" rx="74" ry="16" fill="none" stroke="#d9a441" stroke-width="3" opacity="0.9"/>' +
+      '<g clip-path="url(#bardakIc)"><rect x="-5" y="0" width="115" height="180" fill="#fff" opacity="0.55"/><rect class="cay-dolu" x="-5" y="24" width="115" height="160" fill="url(#cay)"/>' +
+      '<path d="M13 24 C19 50 36 70 37 92" stroke="#fff" stroke-width="6" fill="none" stroke-linecap="round" opacity="0.45"/>' +
+      '<path d="M24 130 C22 146 26 160 34 168" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.35"/></g>' +
+      '<path d="' + bardak + '" fill="none" stroke="' + c + '" stroke-width="5" stroke-linejoin="round"/>' +
+      '<ellipse cx="52" cy="0" rx="50" ry="7" fill="none" stroke="' + c + '" stroke-width="4"/>' +
+      '<path class="buhar b1" d="M30 -12 C14 -38 46 -52 30 -80" stroke="' + c + '" stroke-width="6" fill="none" stroke-linecap="round" opacity="0.5"/>' +
+      '<path class="buhar b2" d="M54 -12 C38 -38 70 -52 54 -80" stroke="' + c + '" stroke-width="6" fill="none" stroke-linecap="round" opacity="0.5"/>' +
+      '<path class="buhar b3" d="M78 -12 C62 -38 94 -52 78 -80" stroke="' + c + '" stroke-width="6" fill="none" stroke-linecap="round" opacity="0.5"/></g>' +
+      // akan çay
+      '<path class="cay-akis" d="M0 0" stroke="#b33a14" stroke-width="6" stroke-linecap="round" fill="none" opacity="0"/>' +
+      // çaydanlık (1.3 kat büyük, tabanı 720,468)
+      '<g transform="translate(720 468) scale(1.3) translate(-720 -468)">' +
+      '<path d="M652 392 C622 386 606 360 596 330 C592 320 600 316 606 324 C618 344 634 360 660 366" fill="url(#bakir)" stroke="' + c + '" stroke-width="4.5" stroke-linejoin="round"/>' +
+      '<path d="M796 360 C836 360 836 430 790 432" fill="none" stroke="' + c + '" stroke-width="8" stroke-linecap="round"/>' +
+      '<ellipse cx="720" cy="400" rx="86" ry="68" fill="url(#bakir)" stroke="' + c + '" stroke-width="4.5"/>' +
+      '<path d="M670 360 Q700 384 690 430" stroke="#ffd59a" stroke-width="7" fill="none" stroke-linecap="round" opacity="0.6"/>' +
+      '<ellipse cx="720" cy="334" rx="52" ry="10" fill="#d8692a" stroke="' + c + '" stroke-width="4.5"/>' +
+      '<g class="demlik">' +
+      '<path d="M676 290 C648 286 634 266 626 246 C622 238 630 234 636 240 C646 256 660 268 682 272" fill="url(#bakir)" stroke="' + c + '" stroke-width="4.5" stroke-linejoin="round"/>' +
+      '<path d="M768 258 C798 258 798 312 764 312" fill="none" stroke="' + c + '" stroke-width="7" stroke-linecap="round"/>' +
+      '<ellipse cx="720" cy="284" rx="56" ry="46" fill="url(#bakir)" stroke="' + c + '" stroke-width="4.5"/>' +
+      '<path d="M688 262 Q704 276 698 304" stroke="#ffd59a" stroke-width="6" fill="none" stroke-linecap="round" opacity="0.6"/>' +
+      '<path d="M690 244 Q720 222 750 244 Z" fill="#e2702a" stroke="' + c + '" stroke-width="4.5" stroke-linejoin="round"/>' +
+      '<circle cx="720" cy="226" r="11" fill="#c8481a" stroke="' + c + '" stroke-width="4.5"/></g></g>' +
+      '</svg>';
+  },
+  yapraklar: function (renk) {
+    var y = '';
+    for (var i = 0; i < 7; i++) y += '<path class="yaprak-c" data-i="' + i + '" d="M0 0 C40 -40 100 -30 120 0 C100 30 40 40 0 0 Z" fill="' + renk + '" opacity="' + (0.25 + i * 0.08) + '"/>';
+    return '<svg width="760" height="500" viewBox="-380 -250 760 500">' + y + '</svg>';
+  }
+};
+
+// Etkinlik amblemleri (başlık yazıları)
+var AMBLEMLER = {
+  annelerleKitapKulubu: function () {
+    var bulut = [[200,150,110],[370,95,95],[560,90,100],[740,120,100],[840,240,95],[770,370,95],[570,410,90],[370,410,95],[180,360,100],[120,250,90]]
+      .map(function (c) { return '<circle cx="' + c[0] + '" cy="' + c[1] + '" r="' + c[2] + '"/>'; }).join("");
+    var kalp = function (x, y, b, dolu) { return '<path transform="translate(' + x + ' ' + y + ') scale(' + b + ')" d="M0 8 C-10 -4 -26 4 -18 18 L0 34 L18 18 C26 4 10 -4 0 8 Z" fill="' + (dolu ? '#ef8a7a' : 'none') + '" stroke="#e9897b" stroke-width="' + (dolu ? 0 : 4 / b) + '" stroke-linejoin="round"/>'; };
+    return '<svg viewBox="0 0 960 520">' +
+      '<g fill="#fdf6ec">' + bulut + '<rect x="130" y="110" width="720" height="310" rx="140"/></g>' +
+      // sol: kalp çiçek
+      '<path d="M110 380 C100 320 120 250 110 180" stroke="#3e7d5a" stroke-width="7" fill="none" stroke-linecap="round"/>' +
+      '<path d="M110 320 C70 310 60 280 72 266 C95 275 110 295 110 320 Z" fill="#7fae8c"/>' +
+      '<path d="M111 270 C150 260 160 232 148 218 C125 227 111 247 111 270 Z" fill="#7fae8c"/>' +
+      '<path d="M110 355 C145 350 158 325 146 312 C125 320 110 336 110 355 Z" fill="#7fae8c"/>' +
+      kalp(110, 136, 2.3, true) +
+      // süs kalpleri ve parıltılar
+      kalp(238, 112, 1.1, false) + kalp(770, 104, 1.3, false) + kalp(852, 262, 1.1, false) +
+      '<path d="M40 400 L72 388 M50 440 L80 420 M75 468 L92 440" stroke="#fff" stroke-width="7" stroke-linecap="round" opacity="0.9"/>' +
+      '<path d="M880 120 L910 100 M892 160 L926 154" stroke="#fff" stroke-width="7" stroke-linecap="round" opacity="0.9"/>' +
+      // yazı
+      '<text x="500" y="218" text-anchor="middle" font-family="Chewy" font-size="128" fill="#2f6b4f">Annelerle</text>' +
+      '<text x="500" y="342" text-anchor="middle" font-family="Chewy" font-size="134" fill="#4a2614">Kitap Kulübü</text>' +
+      // şerit
+      '<rect x="215" y="378" width="540" height="62" rx="31" fill="#f8d9d1" stroke="#eab1a4" stroke-width="3"/>' +
+      '<text x="485" y="421" text-anchor="middle" font-family="Patrick Hand" font-size="36" fill="#6b2f22">Bir Kitap, Birçok Duygu, Güzel Buluşma</text>' +
+      // sağ alt: açık kitap
+      '<g transform="translate(772 384) scale(0.9)"><ellipse cx="72" cy="78" rx="80" ry="12" fill="#f3c6bb" opacity="0.8"/>' +
+      '<path d="M8 12 Q40 2 72 16 L72 76 Q40 62 8 72 Z" fill="#fff" stroke="#3a2418" stroke-width="4" stroke-linejoin="round"/>' +
+      '<path d="M136 12 Q104 2 72 16 L72 76 Q104 62 136 72 Z" fill="#fff" stroke="#3a2418" stroke-width="4" stroke-linejoin="round"/>' +
+      '<path d="M20 28 L60 32 M20 42 L60 46 M20 56 L56 59 M84 32 L124 28 M84 46 L124 42" stroke="#3a2418" stroke-width="2.5" stroke-linecap="round" opacity="0.6"/>' +
+      kalp(104, 52, 0.6, true) + '</g>' +
+      '</svg>';
+  }
+};
+
+var IKONLAR = {
+  takvim: '<svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
+  saat: '<svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  konum: '<svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6-5.7-6-11a6 6 0 0 1 12 0c0 5.3-6 11-6 11z"/><circle cx="12" cy="10" r="2.2"/></svg>',
+  kisi: '<svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>',
+  kitap: '<svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5a2 2 0 0 1 2-2h5v17H6a2 2 0 0 0-2 2z"/><path d="M20 5a2 2 0 0 0-2-2h-5v17h5a2 2 0 0 1 2 2z"/></svg>',
+  ucret: '<svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/></svg>'
+};
+
+// Sahne türleri: kanca, baslik, metin, bilgi, cta
+function sahneKur(s, renk, zemin, koyu) {
+  var b = el("div", "bolum");
+  var o = function (n) { n.classList.add("oge"); b.appendChild(n); return n; };
+  if (s.amblem && AMBLEMLER[s.amblem]) o(el("div", "amblem", AMBLEMLER[s.amblem]()));
+  if (s.ustRozet) o(el("div", "ust-rozet", kacis(s.ustRozet), s.koyuZemin ? { background: "#fff", color: renk } : { background: renk, color: "#fff" }));
+  var yaziRengi = s.koyuZemin ? "#fff" : koyu;
+  if (s.tur === "kanca") {
+    var kb = o(el("div", "kanca", kelimeler(s.buyuk), { color: yaziRengi }));
+    kb.style.setProperty("--vurgu", s.koyuZemin ? "rgba(255,255,255,0.28)" : renk + "40");
+    if (s.kucuk) o(el("div", "kanca-alt", kelimeler(s.kucuk), { color: yaziRengi, opacity: 0.92 }));
+  } else if (s.tur === "baslik") {
+    if (s.ikon) o(el("div", "kart-ikon", IKONLAR[s.ikon] || "", { background: renk, color: "#fff", width: "150px", height: "150px", borderRadius: "40px" }));
+    o(el("div", "baslik", kacis(s.baslik), { color: koyu }));
+    if (s.alt) o(el("div", "alt", kacis(s.alt), { color: renk }));
+  } else if (s.tur === "metin") {
+    var m = o(el("div", "metin", kelimeler(s.metin), { color: yaziRengi }));
+    m.style.setProperty("--vurgu", s.koyuZemin ? "rgba(255,255,255,0.28)" : renk + "40");
+  } else if (s.tur === "bilgi") {
+    (s.kartlar || []).forEach(function (k) {
+      var kart = el("div", "kart");
+      kart.appendChild(el("div", "kart-ikon", IKONLAR[k.ikon] || "", { background: zemin, color: renk }));
+      var y = el("div", null, null, { display: "flex", flexDirection: "column", gap: "6px" });
+      y.appendChild(el("div", "kart-etiket", kacis(k.etiket), { color: koyu }));
+      y.appendChild(el("div", "kart-deger", kacis(k.deger), { color: koyu }));
+      kart.appendChild(y);
+      o(kart);
+    });
+  } else if (s.tur === "cta") {
+    if (s.rozetler) {
+      var r = el("div", "rozetler");
+      s.rozetler.forEach(function (t, i) {
+        r.appendChild(el("span", "rozet", kacis(t), i === 0 ? { background: renk, color: "#fff" } : { background: "#fff", color: koyu }));
+      });
+      o(r);
+    }
+    o(el("div", "cta", kacis(s.baslik), { color: koyu }));
+    if (s.dugme) o(el("div", "cta-kutu nabiz", kacis(s.dugme), { background: koyu }));
+    if (s.adres) o(el("div", "alt", kacis(s.adres), { color: renk }));
+  }
+  if (s.cizim) { b.style.justifyContent = "flex-start"; b.style.paddingTop = "40px"; }
+  var paket = document.createElement("div");
+  if (s.koyuZemin) paket.appendChild(el("div", "sahne-zemin", null, { background: "radial-gradient(900px 700px at 80% 10%, rgba(255,255,255,0.18), transparent 60%), " + renk }));
+  if (s.cizim && CIZIMLER[s.cizim]) paket.appendChild(el("div", "cizim", CIZIMLER[s.cizim](renk, koyu, s)));
+  paket.appendChild(b);
+  return paket;
+}
+
+function hazirla(veri, sesSuresi) {
+  V = veri;
+  var sahne = document.getElementById("sahne");
+  sahne.innerHTML = "";
+  var renk = veri.renk || "#2e5339", zemin = veri.zemin || "#e3f1e6", koyu = veri.koyu || "#1f2d23";
+  var z = el("div", "zemin", null, { background: "linear-gradient(170deg," + zemin + " 0%, #ffffff 55%, " + zemin + " 100%)" });
+  sahne.appendChild(z);
+  // Hareketli süs daireleri
+  [[760, 260, 420, 0.16], [-120, 1180, 380, 0.12], [820, 1460, 300, 0.1], [180, 120, 160, 0.12]].forEach(function (d, i) {
+    var c = el("div", "daire", null, { left: d[0] + "px", top: d[1] + "px", width: d[2] + "px", height: d[2] + "px", background: renk, opacity: d[3] });
+    c.dataset.i = i; sahne.appendChild(c);
+  });
+  // Süreler: sahne ağırlıkları seslendirme süresine yayılır
+  var agirlik = veri.sahneler.reduce(function (t, s) { return t + (s.agirlik || 1); }, 0);
+  var bas = 0, konusma = Math.max(sesSuresi, 8);
+  ZAMAN = veri.sahneler.map(function (s) {
+    var sure = konusma * (s.agirlik || 1) / agirlik;
+    var dugum = sahneKur(s, renk, zemin, koyu);
+    sahne.appendChild(dugum);
+    var r = { bas: bas, son: bas + sure, dugum: dugum };
+    bas += sure; return r;
+  });
+  ZAMAN[ZAMAN.length - 1].son += GIRIS; // son sahne seslendirme bitene kadar kalır
+  var k = el("div", "kapanis");
+  k.appendChild(el("img", null, null)); k.querySelector("img").src = veri.logo || "../okul_logo.png";
+  k.appendChild(el("div", "ad", "Bir Çiçek Koleji<br>Anaokulu"));
+  k.appendChild(el("div", "yer", "TUZLA · İSTANBUL"));
+  sahne.appendChild(k);
+  TOPLAM = GIRIS + konusma + KAPANIS;
+  return TOPLAM;
+}
+
+function sinir(x) { return Math.max(0, Math.min(1, x)); }
+function yumusak(x) { x = sinir(x); return 1 - Math.pow(1 - x, 3); }
+function geriSek(x) { x = sinir(x); var c1 = 1.4, c3 = c1 + 1; return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2); }
+
+function ciz(t) {
+  var tt = t - GIRIS; // seslendirme GIRIS saniye sonra başlar
+  document.querySelectorAll(".daire").forEach(function (d) {
+    var i = +d.dataset.i;
+    d.style.transform = "translate(" + Math.sin(t * 0.6 + i) * 40 + "px," + Math.cos(t * 0.5 + i * 2) * 50 + "px) scale(" + (1 + Math.sin(t * 0.8 + i) * 0.05) + ")";
+  });
+  ZAMAN.forEach(function (z, si) {
+    var giris = si === 0 ? yumusak((t) / 0.4) : yumusak((tt - z.bas) / 0.35);
+    var cikis = si === ZAMAN.length - 1 ? 1 : 1 - yumusak((tt - z.son + 0.3) / 0.3);
+    var gorunur = Math.min(giris, cikis);
+    var bolum = z.dugum.querySelector(".bolum"), zem = z.dugum.querySelector(".sahne-zemin"), cizim = z.dugum.querySelector(".cizim");
+    var yerel = si === 0 ? t : tt - z.bas;
+    bolum.style.opacity = gorunur;
+    bolum.style.transform = "translateY(" + (1 - cikis) * -60 + "px)";
+    if (zem) zem.style.opacity = Math.min(si === 0 ? 1 : yumusak((tt - z.bas) / 0.3), 1 - yumusak((tt - z.son + 0.2) / 0.4));
+    if (cizim) {
+      var cg = yumusak((yerel - 0.3) / 0.7);
+      cizim.style.opacity = Math.min(cg, cikis);
+      cizim.style.transform = "translateY(" + (1 - geriSek((yerel - 0.3) / 0.8)) * 160 + "px)";
+      // Çay dökme: demlik kalkar (0.9 sn), eğilir, döker, geri döner; bardak dolar; sonra buhar
+      var buharGuc = 1, dem = cizim.querySelector(".demlik");
+      if (dem) {
+        var hr = yumusak((yerel - 0.9) / 0.7) * (1 - yumusak((yerel - 4.3) / 0.7));
+        var eg = yumusak((yerel - 1.4) / 0.5) * (1 - yumusak((yerel - 3.9) / 0.45));
+        var dx = -96.8 * hr, dy = -32 * hr, a = -45 * eg;
+        dem.setAttribute("transform", "translate(" + dx + " " + dy + ") rotate(" + a + " 720 280)");
+        var r = a * Math.PI / 180, ox = -90, oy = -32;
+        var lX = 720 + dx + ox * Math.cos(r) - oy * Math.sin(r), lY = 280 + dy + ox * Math.sin(r) + oy * Math.cos(r);
+        var uX = 720 + (lX - 720) * 1.3, uY = 468 + (lY - 468) * 1.3; // çaydanlık grubu 1.3 ölçekli
+        var sv = yumusak((yerel - 1.8) / 1.9);
+        var ust = 176 - sv * 152;
+        var dolu = cizim.querySelector(".cay-dolu"); dolu.setAttribute("y", ust); dolu.setAttribute("height", 184 - ust);
+        var akis = sinir((yerel - 1.72) / 0.15) * (1 - sinir((yerel - 3.75) / 0.15));
+        var yuzey = 297 + 0.9 * ust;
+        var ak = cizim.querySelector(".cay-akis");
+        ak.setAttribute("d", "M" + uX + " " + uY + " Q" + (uX - 4) + " " + (uY + 20) + " " + (uX - 6) + " " + yuzey);
+        ak.setAttribute("opacity", akis * 0.95);
+        buharGuc = yumusak((yerel - 3.3) / 0.9);
+      }
+      cizim.querySelectorAll(".buhar").forEach(function (b, i) { b.style.transform = "translateY(" + (-((t * 30 + i * 20) % 40)) + "px)"; b.style.opacity = buharGuc * 0.5 * (1 - ((t * 0.75 + i * 0.5) % 1)); });
+      var isik = cizim.querySelector(".isik"); if (isik) isik.setAttribute("r", 128 + Math.sin(t * 1.6) * 8);
+      var sayfa = cizim.querySelector(".sayfa"); if (sayfa) sayfa.style.transform = "scaleX(" + Math.cos(Math.min(1, Math.max(0, (yerel - 1.2) / 1.2)) * Math.PI) + ")";
+      cizim.querySelectorAll(".yaprak-c").forEach(function (y) { var i = +y.dataset.i; y.setAttribute("transform", "translate(" + (Math.cos(i * 0.9 + t * 0.4) * 260) + " " + (Math.sin(i * 1.7 + t * 0.6) * 160) + ") rotate(" + (i * 50 + t * 30) + ")"); });
+    }
+    bolum.querySelectorAll(":scope > .oge").forEach(function (o, k) {
+      var gecikme = 0.15 + k * 0.22;
+      var p = (yerel - gecikme) / 0.55;
+      var kel = o.querySelectorAll(".kelime");
+      if (kel.length) {
+        o.style.opacity = 1; o.style.transform = "none";
+        var hiz = Math.min(0.12, Math.max(0.05, ((z.son - z.bas) * 0.55) / kel.length));
+        kel.forEach(function (w, j) {
+          var q = (yerel - gecikme - j * hiz) / 0.4;
+          w.style.opacity = sinir(q * 1.8);
+          w.style.transform = "translateY(" + (1 - geriSek(q)) * 50 + "px) scale(" + (0.9 + 0.1 * geriSek(q)) + ")";
+          if (w.classList.contains("vurgu")) w.style.setProperty("--cizgi", yumusak((q - 0.6) / 0.6));
+        });
+      } else {
+        o.style.opacity = sinir(p * 1.6);
+        var x = o.classList.contains("kart") ? (k % 2 ? 1 : -1) * (1 - yumusak(p)) * 140 : 0;
+        o.style.transform = "translate(" + x + "px," + (1 - geriSek(p)) * 90 + "px) scale(" + (0.94 + 0.06 * geriSek(p)) + ")";
+        if (o.classList.contains("nabiz") && p >= 1) o.style.transform = "scale(" + (1 + 0.04 * Math.sin((yerel - gecikme) * 6)) + ")";
+      }
+    });
+  });
+  var k = document.querySelector(".kapanis");
+  var kb = TOPLAM - KAPANIS;
+  var kp = yumusak((t - kb) / 0.45);
+  k.style.opacity = kp;
+  var img = k.querySelector("img");
+  img.style.transform = "scale(" + (0.7 + 0.3 * geriSek((t - kb - 0.1) / 0.7)) + ") rotate(" + (1 - yumusak((t - kb) / 0.9)) * -25 + "deg)";
+}
+</script>
+</body>
+</html>
