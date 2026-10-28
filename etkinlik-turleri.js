@@ -6,32 +6,32 @@ var KATILIMCI_TURLERI = {
   aile: {
     etiket: "Ailece", uzun: "Çocuk ve ebeveynler birlikte",
     cocukKatilir: true, yetiskinSecimi: true, ebeveyn: "",
-    renk: "#2e5339", zemin: "#e3f1e6"
+    renk: "#2f7d4a", zemin: "#e2f3e6"
   },
   anneCocuk: {
     etiket: "Anne + çocuk", uzun: "Anneler çocuklarıyla birlikte",
     cocukKatilir: true, yetiskinSecimi: false, ebeveyn: "anne",
-    renk: "#9a3f1c", zemin: "#fdebdf"
+    renk: "#c2452d", zemin: "#fde7e1"
   },
   babaCocuk: {
     etiket: "Baba + çocuk", uzun: "Babalar çocuklarıyla birlikte",
     cocukKatilir: true, yetiskinSecimi: false, ebeveyn: "baba",
-    renk: "#17605b", zemin: "#dcf1ee"
+    renk: "#0f7069", zemin: "#d8f2ef"
   },
   anneler: {
     etiket: "Annelere özel", uzun: "Yalnızca anneler katılır",
     cocukKatilir: false, yetiskinSecimi: false, ebeveyn: "anne",
-    renk: "#a2365f", zemin: "#fbe6ee"
+    renk: "#b8236a", zemin: "#fce4f0"
   },
   babalar: {
     etiket: "Babalara özel", uzun: "Yalnızca babalar katılır",
     cocukKatilir: false, yetiskinSecimi: false, ebeveyn: "baba",
-    renk: "#1d5791", zemin: "#e2edf9"
+    renk: "#2149b8", zemin: "#e3eafd"
   },
   ebeveynler: {
     etiket: "Ebeveynlere özel", uzun: "Anne ve babalar katılır, çocuklar gelmez",
     cocukKatilir: false, yetiskinSecimi: true, ebeveyn: "",
-    renk: "#5b4a8b", zemin: "#ece8f7"
+    renk: "#6b3fc4", zemin: "#efe8fc"
   }
 };
 var KATILIMCI_TURU_SIRASI = ["aile", "anneCocuk", "babaCocuk", "anneler", "babalar", "ebeveynler"];
