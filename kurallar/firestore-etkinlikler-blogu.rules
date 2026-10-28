@@ -1,0 +1,78 @@
+    // ═══════ ETKİNLİKLER SİTESİ — etkinlikler.bircicekkoleji.com (29 Ekim 2026) ═══════
+    // Yalnız EKLEME: mevcut /etkinlikler ve /etkinlik_aboneler bloklarına dokunmaz.
+    // Firestore'da aynı belgeye birden çok kural eşleşirse herhangi birinin izni yeterlidir.
+    // Yerleşim: "match /etkinlik_aboneler/{email} { ... }" bloğunun hemen altına yapıştırın.
+    function etkinlikYonetici() {
+      return isAdmin() || isKurucuMudur();
+    }
+
+    // Site ayarları (slogan, iletişim bilgileri): herkes okur, yönetim yazar.
+    match /etkinlik_ayarlar/{belgeId} {
+      allow read: if true;
+      allow write: if etkinlikYonetici();
+    }
+
+    // Kayıtlar: giriş yapan kişi yalnız kendi e-postasıyla kayıt açar ve kendi kayıtlarını okur.
+    match /etkinlik_kayitlari/{kayitId} {
+      allow create: if isSignedIn()
+        && request.resource.data.userEmail == userEmail()
+        && request.resource.data.eventId is string
+        && request.resource.data.totalAttendees is int
+        && request.resource.data.totalAttendees >= 1
+        && request.resource.data.totalAttendees <= 20;
+      allow read: if etkinlikYonetici()
+        || (isSignedIn() && resource.data.userEmail == userEmail());
+      allow update, delete: if etkinlikYonetici();
+    }
+
+    // Kontenjan sayacı: giriş yapan kişi yalnız filledSpots'u 1–20 arasında artırabilir.
+    match /etkinlikler/{etkinlikId} {
+      allow update: if isSignedIn()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['filledSpots'])
+        && request.resource.data.filledSpots is int
+        && request.resource.data.filledSpots > resource.data.get('filledSpots', 0)
+        && request.resource.data.filledSpots <= resource.data.get('filledSpots', 0) + 20;
+    }
+
+    // Veli profili: herkes yalnız kendi profilini okur/yazar (belge kimliği = e-posta).
+    match /etkinlik_profiller/{email} {
+      allow read, write: if isSignedIn() && email.lower() == userEmail();
+      allow read, delete: if etkinlikYonetici();
+    }
+
+    // Bülten: ziyaretçi abone olabilir; yalnız beklenen alanlar, değiştirme/silme yönetimde.
+    match /etkinlik_aboneler/{email} {
+      allow create: if request.resource.data.keys().hasOnly(['email', 'name', 'subscribedAt', 'active', 'izin'])
+        && request.resource.data.email == email
+        && email.size() <= 254
+        && email.matches('[^@ ]+@[^@ ]+[.][^@ ]+')
+        && request.resource.data.get('name', '').size() <= 100;
+    }
+
+    // Etkinlik sonrası yorumlar: yalnız o etkinliğe kaydı olan veli yazar; yönetim onaylar.
+    // Herkese açık okuma yalnız onaylı + paylaşım izni verilmiş + sitede gösterilmesi seçilmiş yorumlarda.
+    match /etkinlik_yorumlari/{yorumId} {
+      allow create: if isSignedIn()
+        && request.resource.data.keys().hasOnly(['eventId', 'kayitId', 'yazarUid', 'gorunenAd', 'puan', 'yorum',
+             'fotolar', 'paylasimIzni', 'izin', 'durum', 'sitedeGoster', 'olusturma'])
+        && request.resource.data.yazarUid == request.auth.uid
+        && request.resource.data.durum == 'bekliyor'
+        && request.resource.data.sitedeGoster == false
+        && request.resource.data.paylasimIzni is bool
+        && request.resource.data.puan is int
+        && request.resource.data.puan >= 1 && request.resource.data.puan <= 5
+        && request.resource.data.yorum is string
+        && request.resource.data.yorum.size() <= 2000
+        && request.resource.data.gorunenAd is string
+        && request.resource.data.gorunenAd.size() <= 60
+        && request.resource.data.fotolar is list
+        && request.resource.data.fotolar.size() <= 5
+        && request.resource.data.kayitId is string
+        && get(/databases/$(database)/documents/etkinlik_kayitlari/$(request.resource.data.kayitId)).data.userEmail == userEmail()
+        && get(/databases/$(database)/documents/etkinlik_kayitlari/$(request.resource.data.kayitId)).data.eventId == request.resource.data.eventId;
+      allow read: if etkinlikYonetici()
+        || (isSignedIn() && resource.data.yazarUid == request.auth.uid)
+        || (resource.data.durum == 'onaylandi' && resource.data.paylasimIzni == true && resource.data.sitedeGoster == true);
+      allow update, delete: if etkinlikYonetici();
+    }
+    // ═══════ ETKİNLİKLER SİTESİ SONU ═══════
