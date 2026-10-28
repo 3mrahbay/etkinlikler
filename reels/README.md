@@ -36,7 +36,7 @@ Etkinlik tarihi geçmişse atlanır.
 {
   "renk": "#a2365f", "zemin": "#fbe6ee", "koyu": "#3b1527",
   "sahneler": [
-    {"tur": "kanca", "agirlik": 3.5, "koyuZemin": true, "ustRozet": "KİTAP KULÜBÜ", "buyuk": "*Anneler…*", "kucuk": "bu akşam biraz da kendimize zaman ayıralım."},
+    {"tur": "kanca", "agirlik": 3.5, "koyuZemin": true, "amblem": "annelerleKitapKulubu", "buyuk": "*Anneler…*", "kucuk": "bu akşam biraz da kendimize zaman ayıralım."},
     {"tur": "baslik", "agirlik": 6, "cizim": "kitapCay", "ustRozet": "2. BULUŞMA", "baslik": "Ebeveynliği Hissetmek", "alt": "Jennifer Day"},
     {"tur": "metin", "agirlik": 7, "metin": "… *vurgulanan* kelimeler yıldızla …"},
     {"tur": "bilgi", "agirlik": 5.5, "kartlar": [{"ikon": "takvim", "etiket": "TARİH", "deger": "26 Kasım Perşembe"}]},
@@ -46,7 +46,9 @@ Etkinlik tarihi geçmişse atlanır.
 ```
 
 - Renkler `etkinlik-turleri.js` içindeki katılımcı türünden alınır (`renk`, `zemin`); `koyu` aynı tonun çok koyusu.
-- İkonlar: `takvim`, `saat`, `konum`, `kisi`, `kitap`, `ucret`. Çizimler: `kitapCay`, `yapraklar`.
+- İkonlar: `takvim`, `saat`, `konum`, `kisi`, `kitap`, `ucret`. Çizimler: `kitapCay` (açık kitap + tabakta ince belli çay bardağı), `yapraklar`.
+- Amblem: sahneye `"amblem": "annelerleKitapKulubu"` eklenirse "Annelerle Kitap Kulübü" başlık yazısı gösterilir
+  (Kitap Kulübü gönderilerinde açılış sahnesine konur). `"kapakSaniye": 3.2` ile kapak karesi amblemin göründüğü ana alınır.
 - **Fotoğraf kullanılmaz** (sosyal medyada çocuk yüzü görünmeme kuralı); sahneler çizim ve yazıyla kurulur.
 - Kapanış: okul logosu + "Bir Çiçek Koleji Anaokulu · Tuzla" (kendiliğinden eklenir).
 

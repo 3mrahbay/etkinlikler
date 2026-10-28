@@ -43,7 +43,8 @@ def main():
         toplam = sayfa.evaluate("([v,s]) => hazirla(v,s)", [veri, ses_suresi])
         sayfa.wait_for_timeout(300)
         n = int(round(toplam * FPS))
-        kapak_karesi = int((0.6 + ses_suresi * 0.3) * FPS)
+        # Kapak: veri.kapakSaniye verilmişse o an, yoksa seslendirmenin %30'u
+        kapak_karesi = int(float(veri.get("kapakSaniye", 0.6 + ses_suresi * 0.3)) * FPS)
         for i in range(n):
             sayfa.evaluate(f"ciz({i / FPS})")
             sayfa.screenshot(path=str(kareler / f"{i:05d}.jpg"), type="jpeg", quality=92)
