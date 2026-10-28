@@ -1,0 +1,11 @@
+    // ═══ ETKİNLİK YORUMLARI — velinin etkinlik sonrası yüklediği fotoğraflar (29 Ekim 2026) ═══
+    // Yalnız EKLEME. Yerleşim: Storage › Rules içinde "match /b/{bucket}/o {" satırının altına,
+    // mevcut fonksiyonlardan sonra yapıştırın (adminMi() mevcut kurallarda tanımlı).
+    // Veli yalnız kendi klasörüne, 5 MB altı görsel yükler; dosyaları yalnız yönetici görür ve siler.
+    match /etkinlik_yorumlari/{uid}/{dosya} {
+      allow create: if request.auth != null && request.auth.uid == uid
+        && resource == null
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+      allow read, delete: if adminMi();
+    }

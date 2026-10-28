@@ -81,6 +81,7 @@ body:JSON.stringify({to:to,toName:n,subject:s,htmlContent:h,replyTo:r||"",idToke
 </script>
 <script type="text/babel" src="yonetim-ekleri.jsx"></script>
 <script type="text/babel" src="vitrin.jsx"></script>
+<script type="text/babel" src="etkinlik-yorumlari.jsx"></script>
 <script type="text/babel">
 const{useState,useEffect,useRef}=React;
 const LOGO="https://raw.githubusercontent.com/3mrahbay/etkinlikler/main/okul_logo.png";
@@ -236,6 +237,7 @@ titleLine1:"Birlikte Büyüdüğümüz",titleLine2:"Anlar",
 subtitle:"Anneler, babalar ve çocuklar için atölyeler, kitap buluşmaları, seminerler ve gezilerden oluşan bir takvim.",
 feat1:"\u{1F4DA} Kitap buluşmaları",feat2:"\u{1F9F8} Anne · baba · çocuk",feat3:"\u{1F333} Orman ve atölyeler",
 phone1:"\u{1F4DE} 0216 393 54 57",phone2:"\u{1F4F1} 0555 103 54 57",email:"\u{1F4E7} eposta@bircicekkoleji.com",
+googleYorumLinki:"https://search.google.com/local/writereview?placeid=ChIJEe3U8uHbyhQR_75zGX5PEDk",
 footerTitle:"Okulumuzla Tanışın",footerSubtitle:"Etkinliklerimize katılarak programımızı yakından keşfedin.",
 ibanBank:"Banka Adı",ibanHolder:"Bir Çiçek Koleji Anaokulu",ibanNumber:"TR00 0000 0000 0000 0000 0000 00",
 };
@@ -354,7 +356,7 @@ return(<div style={{background:"#fff",borderRadius:16,overflow:"hidden",boxShado
 <div style={{display:"flex",gap:6}}><button onClick={()=>onReg(ev)} disabled={rc>=ev.capacity} style={{...btnP,flex:1,padding:"9px 0",fontSize:12,opacity:rc>=ev.capacity?0.5:1,cursor:rc>=ev.capacity?"not-allowed":"pointer"}}>{rc>=ev.capacity?"❌ Kontenjan Doldu":"🌿 Katıl"}</button><button onClick={()=>onDet(ev)} style={{...btnS,padding:"9px 14px",fontSize:12}}>Detay</button></div></div></div>)}
 
 /* ═══ DETAIL MODAL ═══ */
-function DetModal({ev,regs,onClose,onReg}){
+function DetModal({ev,regs,onClose,onReg,onYorum}){
 const evRegs=regs.filter(r=>r.eventId===ev.id);
 // 🆕 filledSpots önce, sonra hesaplama
 let rc;
@@ -385,11 +387,13 @@ return(<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",displa
 </div>
 
 <h2 style={{margin:"0 0 10px",fontFamily:ffT,color:"#14213d",fontSize:22}}>{ev.title}</h2>
-<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14,fontFamily:ff,fontSize:12}}>{[{l:"TARİH & SAAT",v:`${fmtDate(ev.date)} • ${ev.startTime}–${ev.endTime}`},{l:"KONUM",v:ev.location},{l:"YAŞ GRUBU",v:ev.ageRange},{l:"ÜCRET",v:ev.isFree?"Ücretsiz":`₺${ev.fee}`}].map((d,i)=>(<div key={i} style={{background:"#f2f4f9",padding:"8px 12px",borderRadius:8}}><div style={{fontSize:10,color:"#888",fontWeight:700}}>{d.l}</div><div style={{fontWeight:700,color:G,marginTop:2}}>{d.v}</div></div>))}</div>
+<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14,fontFamily:ff,fontSize:12}}>{[{l:"TARİH & SAAT",v:`${fmtDate(ev.date)} • ${ev.startTime}${ev.endTime?"–"+ev.endTime:""}`},{l:"KONUM",v:ev.location},{l:"YAŞ GRUBU",v:ev.ageRange},{l:"ÜCRET",v:ev.isFree?"Ücretsiz":`₺${ev.fee}`}].map((d,i)=>(<div key={i} style={{background:"#f2f4f9",padding:"8px 12px",borderRadius:8}}><div style={{fontSize:10,color:"#888",fontWeight:700}}>{d.l}</div><div style={{fontWeight:700,color:G,marginTop:2}}>{d.v}</div></div>))}</div>
 {ev.mapUrl&&<a href={ev.mapUrl} target="_blank" rel="noopener noreferrer" style={{display:"inline-flex",alignItems:"center",gap:6,background:"#e3f2fd",color:"#1565c0",padding:"8px 16px",borderRadius:10,fontSize:13,fontWeight:700,textDecoration:"none",fontFamily:ff,marginBottom:14}}>📍 Haritada Göster & Yol Tarifi Al</a>}
 <p style={{fontFamily:ff,fontSize:13,color:"#555",lineHeight:1.7,marginBottom:14,whiteSpace:"pre-line"}}>{ev.fullDesc||ev.shortDesc}</p>
 {ytId&&<div style={{marginBottom:14,borderRadius:10,overflow:"hidden",aspectRatio:"16/9"}}><iframe src={`https://www.youtube.com/embed/${ytId}`} style={{width:"100%",height:"100%",border:"none"}} allowFullScreen/></div>}
-<div style={{marginBottom:14,padding:"10px 14px",background:"#fff8e1",borderRadius:8,border:"1px solid #ffe082"}}><div style={{fontFamily:ff,fontSize:12,color:"#666"}}>{rc}/{ev.capacity} kişi katılıyor — <strong>{ev.capacity-rc>0?`${ev.capacity-rc} yer kaldı`:"Kontenjan dolu"}</strong></div></div>
+{!etkinlikBitti(ev)&&<div style={{marginBottom:14,padding:"10px 14px",background:"#fff8e1",borderRadius:8,border:"1px solid #ffe082"}}><div style={{fontFamily:ff,fontSize:12,color:"#666"}}>{rc}/{ev.capacity} kişi katılıyor — <strong>{ev.capacity-rc>0?`${ev.capacity-rc} yer kaldı`:"Kontenjan dolu"}</strong></div></div>}
+{etkinlikBitti(ev)&&<OnayliYorumlar ev={ev}/>}
+{etkinlikBitti(ev)&&onYorum&&<button onClick={()=>{onClose();onYorum(ev)}} style={{...btnS,width:"100%",margin:"14px 0 10px",padding:"11px 16px",fontSize:14}}>Katıldıysanız yorumunuzu ve fotoğraflarınızı paylaşın</button>}
 <div style={{display:"flex",gap:8}}>{etkinlikBitti(ev)?<div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",background:"#f2efe8",color:"#5b6478",borderRadius:10,fontFamily:ff,fontWeight:700,fontSize:14,padding:"10px 16px"}}>Bu etkinlik sona erdi</div>:<button onClick={()=>{onClose();onReg(ev)}} disabled={rc>=ev.capacity} style={{...btnP,flex:1,opacity:rc>=ev.capacity?0.5:1,cursor:rc>=ev.capacity?"not-allowed":"pointer"}}>{rc>=ev.capacity?"❌ Doldu":"Katıl"}</button>}<button onClick={onClose} style={btnS}>Kapat</button></div></div></div></div>)}
 /* ═══ 🆕 REGISTRATION MODAL (YENİ ÖZELLİKLER) ═══ */
 const emptyChild=()=>({name:"",surname:"",birthDate:"",gender:"",currentSchool:"",specialNeeds:""});
@@ -531,7 +535,7 @@ return(<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",displa
 </div></div>)}
 /* ═══ ADMIN COMPONENTS ═══ */
 function Sidebar({active,setActive,onOut}){
-const items=[{k:"dash",i:"📊",l:"Gösterge Paneli"},{k:"events",i:"📅",l:"Etkinlik Yönetimi"},{k:"regs",i:"👥",l:"Kayıt Raporları"},{k:"kids",i:"👶",l:"Çocuk Raporu"},{k:"subs",i:"📬",l:"Aboneler"},{k:"settings",i:"⚙️",l:"Site Ayarları"}];
+const items=[{k:"dash",i:"📊",l:"Gösterge Paneli"},{k:"events",i:"📅",l:"Etkinlik Yönetimi"},{k:"regs",i:"👥",l:"Kayıt Raporları"},{k:"yorumlar",i:"💬",l:"Yorumlar"},{k:"kids",i:"👶",l:"Çocuk Raporu"},{k:"subs",i:"📬",l:"Aboneler"},{k:"settings",i:"⚙️",l:"Site Ayarları"}];
 return(<div style={{width:220,background:`linear-gradient(180deg,${G},#0e1a33)`,minHeight:"100vh",padding:"20px 0",flexShrink:0,display:"flex",flexDirection:"column"}}>
 <div style={{padding:"0 16px 20px",borderBottom:"1px solid rgba(255,255,255,0.1)",display:"flex",alignItems:"center",gap:10}}><img src={LOGO} alt="" style={{width:40,height:40,borderRadius:"50%",border:"2px solid rgba(255,255,255,0.2)"}}/><div><div style={{fontSize:10,color:"rgba(255,255,255,0.5)",fontFamily:ff,fontWeight:700,letterSpacing:1}}>BİR ÇİÇEK KOLEJİ</div><div style={{fontSize:14,color:"#fff",fontFamily:ffT,fontWeight:800}}>Admin Panel</div></div></div>
 <div style={{flex:1,padding:"12px 8px"}}>{items.map(it=>(<button key={it.k} onClick={()=>setActive(it.k)} style={{display:"flex",alignItems:"center",gap:10,width:"100%",padding:"10px 12px",marginBottom:4,borderRadius:10,border:"none",background:active===it.k?"rgba(255,255,255,0.15)":"transparent",color:active===it.k?"#fff":"rgba(255,255,255,0.6)",fontFamily:ff,fontWeight:700,fontSize:13,cursor:"pointer",textAlign:"left"}}><span style={{fontSize:16}}>{it.i}</span>{it.l}</button>))}</div>
@@ -843,6 +847,7 @@ return(<div><div style={{display:"flex",justifyContent:"space-between",alignItem
 <div style={{display:"grid",gap:16}}>
 <div style={crd}><h3 style={{fontFamily:ff,fontWeight:800,color:G,fontSize:14,margin:"0 0 14px"}}>🏷️ Hero Bölümü</h3><div style={{display:"grid",gap:12}}><div><label style={lbl}>Rozet Yazısı</label><input style={inp(false)} value={fm.badge} onChange={e=>f("badge",e.target.value)}/></div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}><div><label style={lbl}>Başlık 1</label><input style={inp(false)} value={fm.titleLine1} onChange={e=>f("titleLine1",e.target.value)}/></div><div><label style={lbl}>Başlık 2</label><input style={inp(false)} value={fm.titleLine2} onChange={e=>f("titleLine2",e.target.value)}/></div></div><div><label style={lbl}>Alt Yazı</label><textarea style={{...inp(false),minHeight:50,resize:"vertical"}} value={fm.subtitle} onChange={e=>f("subtitle",e.target.value)}/></div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12}}><div><label style={lbl}>Özellik 1</label><input style={inp(false)} value={fm.feat1} onChange={e=>f("feat1",e.target.value)}/></div><div><label style={lbl}>Özellik 2</label><input style={inp(false)} value={fm.feat2} onChange={e=>f("feat2",e.target.value)}/></div><div><label style={lbl}>Özellik 3</label><input style={inp(false)} value={fm.feat3} onChange={e=>f("feat3",e.target.value)}/></div></div></div></div>
 <div style={crd}><h3 style={{fontFamily:ff,fontWeight:800,color:G,fontSize:14,margin:"0 0 14px"}}>🏦 IBAN / Ödeme Bilgileri</h3><div style={{display:"grid",gap:12}}><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}><div><label style={lbl}>Banka Adı</label><input style={inp(false)} value={fm.ibanBank} onChange={e=>f("ibanBank",e.target.value)}/></div><div><label style={lbl}>Hesap Sahibi</label><input style={inp(false)} value={fm.ibanHolder} onChange={e=>f("ibanHolder",e.target.value)}/></div></div><div><label style={lbl}>IBAN Numarası</label><input style={inp(false)} value={fm.ibanNumber} onChange={e=>f("ibanNumber",e.target.value)} placeholder="TR00 0000 0000 0000 0000 0000 00"/></div></div></div>
+<div style={crd}><h3 style={{fontFamily:ff,fontWeight:800,color:G,fontSize:14,margin:"0 0 14px"}}>⭐ Google Yorum Bağlantısı</h3><div style={{display:"grid",gap:8}}><input style={inp(false)} value={fm.googleYorumLinki||""} onChange={e=>f("googleYorumLinki",e.target.value)} placeholder="https://search.google.com/local/writereview?placeid=..."/><div style={{fontSize:11,color:"#6b7385",fontFamily:ff}}>Yorumlar sayfasındaki "Google yorum daveti gönder" e-postasında bu bağlantı kullanılır.</div></div></div>
 <div style={crd}><h3 style={{fontFamily:ff,fontWeight:800,color:G,fontSize:14,margin:"0 0 14px"}}>📞 Footer & İletişim</h3><div style={{display:"grid",gap:12}}><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}><div><label style={lbl}>Footer Başlık</label><input style={inp(false)} value={fm.footerTitle} onChange={e=>f("footerTitle",e.target.value)}/></div><div><label style={lbl}>Footer Alt Yazı</label><input style={inp(false)} value={fm.footerSubtitle} onChange={e=>f("footerSubtitle",e.target.value)}/></div></div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12}}><div><label style={lbl}>Telefon 1</label><input style={inp(false)} value={fm.phone1} onChange={e=>f("phone1",e.target.value)}/></div><div><label style={lbl}>Telefon 2</label><input style={inp(false)} value={fm.phone2} onChange={e=>f("phone2",e.target.value)}/></div><div><label style={lbl}>E-posta</label><input style={inp(false)} value={fm.email} onChange={e=>f("email",e.target.value)}/></div></div></div></div>
 </div></div>)}
 /* ═══ 🆕 MAIN APP ═══ */
@@ -858,6 +863,9 @@ const[showProfile,setShowProfile]=useState(false);
 const[settings,setSettings]=useState(DEFAULT_SETTINGS);
 const[regEv,setRegEv]=useState(null);
 const[detEv,setDetEv]=useState(null);
+const[yorumEv,setYorumEv]=useState(null);
+const yorumParam=typeof window!=="undefined"?new URLSearchParams(window.location.search).get("yorum"):null;
+const yorumKapat=()=>{setYorumEv(null);if(yorumParam){const u=new URL(window.location.href);u.searchParams.delete("yorum");window.history.replaceState(null,"",u.toString())}};
 const[filter,setFilter]=useState("all");
 const[audienceFilter,setAudienceFilter]=useState("all"); // 🆕
 const[loginRequired,setLoginRequired]=useState(null); // 🆕
@@ -986,6 +994,9 @@ setRegEv(ev);
 };
 
 const pubEvs=events.filter(e=>e.status==="published");
+// E-postadaki bağlantı (?yorum=etkinlikId) — etkinlikler yüklenince yorum formunu bir kez aç
+const yorumAcildi=useRef(false);
+useEffect(()=>{if(yorumParam&&!yorumAcildi.current&&events.length){const ev=events.find(e=>e.id===yorumParam);if(ev){yorumAcildi.current=true;setYorumEv(ev)}}},[events.length]);
 // 🆕 Audience + type filtreleri birleştir
 let filEvs=pubEvs;
 if(filter!=="all")filEvs=filEvs.filter(e=>e.type===filter);
@@ -1006,7 +1017,8 @@ if(view==="public")return(
 
 {/* MODALS */}
 {regEv&&<RegModal event={regEv} onClose={()=>setRegEv(null)} onSubmit={handleNewReg} settings={settings} user={fbUser} profile={profile} isVeli={isVeli}/>}
-{detEv&&<DetModal ev={detEv} regs={regs} onClose={()=>setDetEv(null)} onReg={handleRegStart}/>}
+{detEv&&<DetModal ev={detEv} regs={regs} onClose={()=>setDetEv(null)} onReg={handleRegStart} onYorum={setYorumEv}/>}
+{yorumEv&&<YorumFormu ev={yorumEv} kullanici={fbUser} onGiris={googleLogin} onKapat={yorumKapat}/>}
 {showProfile&&fbUser&&<ProfilePage user={fbUser} profile={profile} setProfile={setProfile} events={events} regs={regs} onClose={()=>setShowProfile(false)}/>}
 {/* 🆕 LOGIN GEREKLI MODAL */}
 {loginRequired&&<LoginRequiredModal event={loginRequired} onClose={()=>setLoginRequired(null)} onLogin={async()=>{const ev=loginRequired;setLoginRequired(null);await googleLogin();setTimeout(()=>{setRegEv(ev)},800);}}/>}
@@ -1022,6 +1034,7 @@ return(<div style={{display:"flex",minHeight:"100vh",fontFamily:ff}}>
 {ap==="regs"&&<RegReport events={events} regs={regs}/>}
 {ap==="kids"&&<KidReport events={events} regs={regs}/>}
 {ap==="subs"&&<SubsPage events={events}/>}
+{ap==="yorumlar"&&<YorumlarYonetimi events={events} regs={regs} settings={settings}/>}
 {ap==="settings"&&<SettingsPage settings={settings} setSettings={setSettings}/>}
 </div>
 </div>)}
