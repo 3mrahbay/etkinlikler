@@ -32,34 +32,18 @@ function fsLoad(c){return fbDb.collection(c).get().then(function(s){return s.doc
 function fsSave(c,id,d){return fbDb.collection(c).doc(id).set(d,{merge:true}).catch(function(e){console.error(e)})}
 function fsDelete(c,id){return fbDb.collection(c).doc(id).delete().catch(function(e){console.error(e)})}
 function fsAdd(c,d){return fbDb.collection(c).add(d).then(function(r){return r.id}).catch(function(){return null})}
-// Bunny.net Upload
-var bunnyConfig=null;
-function getBunnyConfig(){
-if(bunnyConfig)return Promise.resolve(bunnyConfig);
-return fbDb.collection("config").doc("bunny").get().then(function(d){
-if(d.exists){bunnyConfig=d.data();return bunnyConfig}
-return null;
-}).catch(function(){return null});
+// Media uploads are authenticated on the server; no storage credentials enter the browser.
+var MEDIA_URL="https://europe-west1-bcka-site.cloudfunctions.net/etkinlikMedia";
+async function fbUploadImage(file,path){
+  var user=fbAuth.currentUser;
+  if(!user)throw new Error("Görsel yüklemek için yönetici hesabıyla giriş yapın.");
+  if(!["image/jpeg","image/png","image/webp"].includes(file.type)||file.size>5*1024*1024)
+    throw new Error("En fazla 5 MB boyutunda JPEG, PNG veya WebP seçin.");
+  var token=await user.getIdToken();
+  var response=await fetch(MEDIA_URL,{method:"POST",headers:{"Authorization":"Bearer "+token,"Content-Type":file.type},body:file});
+  if(!response.ok)throw new Error("Görsel yüklenemedi. Yönetici yetkinizi ve medya hizmetini kontrol edin.");
+  return (await response.json()).url;
 }
-function bunnyUpload(file,folder){
-return getBunnyConfig().then(function(cfg){
-if(!cfg||!cfg.storagePassword||!cfg.storageZone)throw new Error("Bunny config eksik");
-var fileName=Date.now()+"_"+file.name.replace(/[^a-zA-Z0-9._-]/g,"_");
-var path=folder+"/"+fileName;
-var endpoint="https://storage.bunnycdn.com/"+cfg.storageZone+"/"+path;
-return fetch(endpoint,{
-method:"PUT",
-headers:{"AccessKey":cfg.storagePassword,"Content-Type":"application/octet-stream"},
-body:file
-}).then(function(r){
-if(!r.ok)throw new Error("Upload failed: "+r.status);
-var cdnBase=cfg.cdnUrl||("https://"+cfg.storageZone+".b-cdn.net");
-return cdnBase+"/"+path;
-});
-});
-}
-// fbUploadImage - Bunny wrapper
-function fbUploadImage(file,path){return bunnyUpload(file,path.split("/")[0]||"etkinlikler")}
 // Brevo Mail
 var BREVO_URL="https://script.google.com/macros/s/AKfycbwUNvVhTCvxUKOMtbFJ4_UASBo8-sgT13qT_9tWeYKZR3IYaYKUhGdSaGgGaaqMaZLf/exec";
 // Mail proxy'si okul dışı alıcılarda gönderenin Firebase oturumunu doğrular.
@@ -93,13 +77,15 @@ const fileRef=useRef();
 const handleFiles=async(e)=>{
 const files=Array.from(e.target.files);if(!files.length)return;
 setUploading(true);
+try{
 for(const file of files){
 if(file.size>5*1024*1024){alert(file.name+" 5MB üzeri!");continue}
 const path="etkinlikler/"+Date.now()+"_"+file.name;
 const url=await fbUploadImage(file,path);
 if(url)setImages(prev=>[...prev,url]);
 }
-setUploading(false);if(fileRef.current)fileRef.current.value="";
+}catch(e){alert(e.message||"Görsel yüklenemedi.")}
+finally{setUploading(false);if(fileRef.current)fileRef.current.value="";}
 };
 const remove=(i)=>setImages(images.filter((_,j)=>j!==i));
 return(<div style={{background:"#f8f9fc",borderRadius:10,padding:14,border:"1px solid #dde3ef"}}>
@@ -108,7 +94,7 @@ return(<div style={{background:"#f8f9fc",borderRadius:10,padding:14,border:"1px 
 <button onClick={()=>fileRef.current?.click()} disabled={uploading} style={{padding:"8px 16px",background:"linear-gradient(135deg,#1b2d55,#2c4a86)",color:"#fff",border:"none",borderRadius:10,fontFamily:"'DM Sans',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",opacity:uploading?0.6:1}}>
 {uploading?"⏳ Yükleniyor...":"📁 Bilgisayardan Seç"}
 </button>
-<input ref={fileRef} type="file" accept="image/*" multiple style={{display:"none"}} onChange={handleFiles}/>
+<input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" multiple style={{display:"none"}} onChange={handleFiles}/>
 {images.length>0&&<div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:10}}>
 {images.map((img,i)=>(<div key={i} style={{position:"relative",width:90,height:65,borderRadius:8,overflow:"hidden",border:"2px solid #dde3ef"}}>
 <img src={img} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>

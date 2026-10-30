@@ -1,0 +1,14 @@
+diff --git a/firestore.rules b/firestore.rules
+index 3ac3215..edafa13 100644
+--- a/firestore.rules
++++ b/firestore.rules
+@@ -971,2 +971,3 @@ service cloud.firestore {
+-    match /config/{docId} {
+-      allow read, write: if isAdmin() || isKurucuMudur();
++    match /config/{docId}/{configPath=**} {
++      // Bunny credentials belong in Secret Manager, never in client-readable Firestore.
++      allow read, write: if docId != 'bunny' && (isAdmin() || isKurucuMudur());
+@@ -1876 +1877,2 @@ service cloud.firestore {
+-      allow read, write: if !(collection in ['kitapKulubu','kitapKulubuUyeler']) && !(collection in [
++      allow read, write: if collection != 'config'
++        && !(collection in ['kitapKulubu','kitapKulubuUyeler']) && !(collection in [

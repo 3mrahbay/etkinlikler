@@ -1,0 +1,12 @@
+{
+  "title": "Etkinlik Media Runtime",
+  "description": "Auth revocation lookup and quota transactions; no delete/list/admin permissions. Data permissions are database/project scoped, not collection scoped.",
+  "stage": "GA",
+  "includedPermissions": [
+    "firebaseauth.users.get",
+    "datastore.databases.get",
+    "datastore.entities.get",
+    "datastore.entities.create",
+    "datastore.entities.update"
+  ]
+}
