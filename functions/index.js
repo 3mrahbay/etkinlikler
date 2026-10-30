@@ -7,7 +7,7 @@ const {getFirestore} = require('firebase-admin/firestore');
 const {createHandler} = require('./media');
 initializeApp();
 const storage = defineSecret('ETKINLIK_BUNNY_STORAGE');
-exports.etkinlikMedia = onRequest({region:'europe-west1',secrets:[storage],maxInstances:2,concurrency:10,memory:'512MiB',timeoutSeconds:60}, createHandler({
+exports.etkinlikMedia = onRequest({region:'europe-west1',serviceAccount:'etkinlik-media-runtime@bcka-site.iam.gserviceaccount.com',secrets:[storage],minInstances:0,maxInstances:2,cpu:1,concurrency:10,memory:'512MiB',timeoutSeconds:60}, createHandler({
   verifyToken:(token, revoked) => getAuth().verifyIdToken(token, revoked),
   readSecret:() => storage.value(),
   consumeQuota:async uid => {
