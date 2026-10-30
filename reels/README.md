@@ -9,7 +9,7 @@ oturumu) bu dosyadaki adımlarla seslendirmeli, animasyonlu bir Reels ve paylaş
 Etkinlikler herkese açık okunur:
 
 ```
-curl -s "https://firestore.googleapis.com/v1/projects/bcka-site/databases/(default)/documents/etkinlikler?pageSize=300&key=AIzaSyARlqAoh-HRBC9xPwj7qRgG-IuZFSH39Uc"
+curl -s "https://firestore.googleapis.com/v1/projects/bcka-site/databases/(default)/documents/etkinlikler?pageSize=300&key=FIREBASE_WEB_API_KEY"
 ```
 
 Hazırlanacaklar: `status == "published"`, `instagram.paylasimTuru` `organik` ya da `reklam`,

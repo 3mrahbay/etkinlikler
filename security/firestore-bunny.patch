@@ -1,0 +1,26 @@
+diff --git a/firestore.rules b/firestore.rules
+index 3ac3215..edafa13 100644
+--- a/firestore.rules
++++ b/firestore.rules
+@@ -968,8 +968,9 @@ service cloud.firestore {
+       allow read: if isSignedIn();
+       allow write: if isAdmin() || isYonetim();
+     }
+-    match /config/{docId} {
+-      allow read, write: if isAdmin() || isKurucuMudur();
++    match /config/{docId}/{configPath=**} {
++      // Bunny credentials belong in Secret Manager, never in client-readable Firestore.
++      allow read, write: if docId != 'bunny' && (isAdmin() || isKurucuMudur());
+     }
+     // ====== HAVUZ MAIL TERCİHLERİ ======
+     match /havuzMailTercihleri/{prefId} {
+@@ -1873,7 +1874,8 @@ service cloud.firestore {
+ 
+     // ========== VARSAYILAN ==========
+     match /{collection}/{document=**} {
+-      allow read, write: if !(collection in ['kitapKulubu','kitapKulubuUyeler']) && !(collection in [
++      allow read, write: if collection != 'config'
++        && !(collection in ['kitapKulubu','kitapKulubuUyeler']) && !(collection in [
+         'veliKatilim', 'veliKatilimAkisi', 'personelKatilim', 'personelKatilimAkisi'
+       ]) && collection != 'pdrTakipKayitlari' && !(
+         collection in [
