@@ -13,7 +13,7 @@ function gunAdi(ev){return new Date(ev.date+"T12:00").toLocaleDateString("tr-TR"
 
 // Görseli olmayan etkinlikte katılımcı türünün renginde kapak
 function KapakGorseli({ev,kucuk}){
-if(ev.images?.[0])return<img src={ev.images[0]} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block",filter:kucuk?"saturate(0.7)":"none"}}/>;
+if(ev.images?.[0])return<KapakResmi src={ev.images[0]} ayar={ev.kapakAyar} filtre={kucuk?"saturate(0.7)":null}/>;
 const t=katilimciTuruBilgisi(ev);
 return(<span aria-hidden="true" style={{position:"relative",display:"flex",alignItems:"flex-end",width:"100%",height:"100%",background:t.zemin,overflow:"hidden"}}>
 <span style={{position:"absolute",width:kucuk?60:220,height:kucuk?60:220,borderRadius:"50%",background:t.renk,opacity:0.14,right:kucuk?-14:-40,top:kucuk?-18:-60}}/>
