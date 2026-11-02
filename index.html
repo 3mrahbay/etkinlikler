@@ -64,6 +64,7 @@ body:JSON.stringify({to:to,toName:n,subject:s,htmlContent:h,replyTo:r||"",idToke
 }
 </script>
 <script type="text/babel" src="yonetim-ekleri.jsx"></script>
+<script type="text/babel" src="kapak-gorsel.jsx"></script>
 <script type="text/babel" src="vitrin.jsx"></script>
 <script type="text/babel" src="etkinlik-yorumlari.jsx"></script>
 <script type="text/babel">
@@ -71,8 +72,9 @@ const{useState,useEffect,useRef}=React;
 const LOGO="https://raw.githubusercontent.com/3mrahbay/etkinlikler/main/okul_logo.png";
 
 /* ═══ IMAGE UPLOADER ═══ */
-function ImageUploader({images,setImages}){
+function ImageUploader({images,setImages,kapakAyar,setKapakAyar}){
 const[uploading,setUploading]=useState(false);
+const[duzenleniyor,setDuzenleniyor]=useState(false);
 const fileRef=useRef();
 const handleFiles=async(e)=>{
 const files=Array.from(e.target.files);if(!files.length)return;
@@ -87,21 +89,29 @@ if(url)setImages(prev=>[...prev,url]);
 }catch(e){alert(e.message||"Görsel yüklenemedi.")}
 finally{setUploading(false);if(fileRef.current)fileRef.current.value="";}
 };
-const remove=(i)=>setImages(images.filter((_,j)=>j!==i));
+const remove=(i)=>{setImages(images.filter((_,j)=>j!==i));if(i===0&&setKapakAyar)setKapakAyar(null)};
+// Seçilen görseli kapak (ilk sıra) yapar; yeni kapağın ayarı sıfırdan başlar
+const kapakYap=(i)=>{setImages([images[i],...images.filter((_,j)=>j!==i)]);if(setKapakAyar)setKapakAyar(null)};
 return(<div style={{background:"#f8f9fc",borderRadius:10,padding:14,border:"1px solid #dde3ef"}}>
 <label style={{display:"block",fontSize:12,fontWeight:700,color:"#1b2d55",marginBottom:4,fontFamily:"'DM Sans',sans-serif"}}>📸 Görseller</label>
-<p style={{fontFamily:"'DM Sans',sans-serif",fontSize:10,color:"#888",margin:"2px 0 8px"}}>Kart: 600×400px | Detay: 1200×800px | Max 5MB</p>
+<p style={{fontFamily:"'DM Sans',sans-serif",fontSize:10,color:"#888",margin:"2px 0 8px"}}>Kart: 600×400px | Detay: 1200×800px | Max 5MB · Kapakta görünecek bölümü "Kapağı düzenle" ile seçebilirsiniz</p>
 <button onClick={()=>fileRef.current?.click()} disabled={uploading} style={{padding:"8px 16px",background:"linear-gradient(135deg,#1b2d55,#2c4a86)",color:"#fff",border:"none",borderRadius:10,fontFamily:"'DM Sans',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",opacity:uploading?0.6:1}}>
 {uploading?"⏳ Yükleniyor...":"📁 Bilgisayardan Seç"}
 </button>
 <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" multiple style={{display:"none"}} onChange={handleFiles}/>
 {images.length>0&&<div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:10}}>
-{images.map((img,i)=>(<div key={i} style={{position:"relative",width:90,height:65,borderRadius:8,overflow:"hidden",border:"2px solid #dde3ef"}}>
-<img src={img} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+{images.map((img,i)=>(<div key={i} style={{position:"relative",width:90,height:65,borderRadius:8,overflow:"hidden",border:i===0?"2px solid #1b2d55":"2px solid #dde3ef"}}>
+{i===0?<KapakResmi src={img} ayar={kapakAyar}/>:<img src={img} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>}
+{i>0&&<button onClick={()=>kapakYap(i)} title="Bu görseli kapak yap" style={{position:"absolute",bottom:2,left:2,padding:"1px 5px",borderRadius:6,background:"rgba(255,255,255,0.92)",color:"#1b2d55",border:"none",fontSize:9,fontWeight:700,cursor:"pointer"}}>Kapak yap</button>}
 <button onClick={()=>remove(i)} style={{position:"absolute",top:2,right:2,width:18,height:18,borderRadius:"50%",background:"#e53935",color:"#fff",border:"none",fontSize:10,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
 {i===0&&<div style={{position:"absolute",bottom:0,left:0,right:0,background:"rgba(46,83,57,0.8)",color:"#fff",fontSize:8,textAlign:"center",padding:1}}>KAPAK</div>}
 </div>))}
 </div>}
+{images.length>0&&setKapakAyar&&<div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",marginTop:10}}>
+<button onClick={()=>setDuzenleniyor(true)} style={{padding:"7px 14px",background:"#fff",color:"#1b2d55",border:"2px solid #1b2d55",borderRadius:10,fontFamily:"'DM Sans',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>✂️ Kapağı düzenle</button>
+<span style={{fontFamily:"'DM Sans',sans-serif",fontSize:11,color:"#6b7385"}}>{!kapakAyar?"Ortadan kırpılıyor":kapakAyar.mod==="sigdir"?"Görselin tamamı gösteriliyor":"Odak noktası ayarlandı"}</span>
+</div>}
+{duzenleniyor&&<KapakDuzenleyici src={images[0]} ayar={kapakAyar} uygula={setKapakAyar} kapat={()=>setDuzenleniyor(false)}/>}
 </div>)}
 
 /* ═══ AUTH BAR ═══ */
@@ -307,7 +317,7 @@ const isPublic=audience==="public";
 
 return(<div style={{background:"#fff",borderRadius:16,overflow:"hidden",boxShadow:"0 4px 24px rgba(46,83,57,0.10)",display:"flex",flexDirection:"column",transition:"transform 0.3s",border:isVeli?"2px solid #2c4a86":"none"}} onMouseEnter={e=>e.currentTarget.style.transform="translateY(-4px)"} onMouseLeave={e=>e.currentTarget.style.transform=""}>
 <div style={{position:"relative",height:200,overflow:"hidden"}}>
-<img src={img} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+<KapakResmi src={img} ayar={ev.images?.[0]?ev.kapakAyar:null}/>
 
 {/* Tür rozeti */}
 <div style={{position:"absolute",top:10,left:10,background:tp.bg,color:tp.color,padding:"3px 10px",borderRadius:16,fontSize:11,fontWeight:700,fontFamily:ff}}>{tp.icon} {tp.label}</div>
@@ -361,7 +371,7 @@ if(typeof ev.filledSpots==="number"&&ev.filledSpots>0){
 const ytId=ev.youtubeUrl?.match(/(?:v=|\/)([\w-]{11})/)?.[1];
 const audience=ev.audience||"bircicekli";
 
-return(<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,padding:20}}><div style={{background:"#fff",borderRadius:20,maxWidth:520,width:"100%",maxHeight:"85vh",overflow:"auto",boxShadow:"0 20px 60px rgba(0,0,0,0.2)"}}><img src={ev.images?.[0]||""} alt="" style={{width:"100%",height:200,objectFit:"cover",borderRadius:"20px 20px 0 0"}}/><div style={{padding:"16px 20px 20px"}}>
+return(<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,padding:20}}><div style={{background:"#fff",borderRadius:20,maxWidth:520,width:"100%",maxHeight:"85vh",overflow:"auto",boxShadow:"0 20px 60px rgba(0,0,0,0.2)"}}>{ev.images?.[0]&&<div style={{height:200,borderRadius:"20px 20px 0 0",overflow:"hidden"}}><KapakResmi src={ev.images[0]} ayar={ev.kapakAyar}/></div>}<div style={{padding:"16px 20px 20px"}}>
 <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8,flexWrap:"wrap"}}>
 <div style={{background:TL[ev.type]?.bg,color:TL[ev.type]?.color,padding:"3px 10px",borderRadius:16,fontSize:11,fontWeight:700,fontFamily:ff}}>{TL[ev.type]?.icon} {TL[ev.type]?.label}</div>
 <KatilimciRozeti ev={ev}/>
@@ -375,6 +385,7 @@ return(<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",displa
 <h2 style={{margin:"0 0 10px",fontFamily:ffT,color:"#14213d",fontSize:22}}>{ev.title}</h2>
 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14,fontFamily:ff,fontSize:12}}>{[{l:"TARİH & SAAT",v:`${fmtDate(ev.date)} • ${ev.startTime}${ev.endTime?"–"+ev.endTime:""}`},{l:"KONUM",v:ev.location},{l:"YAŞ GRUBU",v:ev.ageRange},{l:"ÜCRET",v:ev.isFree?"Ücretsiz":`₺${ev.fee}`}].map((d,i)=>(<div key={i} style={{background:"#f2f4f9",padding:"8px 12px",borderRadius:8}}><div style={{fontSize:10,color:"#888",fontWeight:700}}>{d.l}</div><div style={{fontWeight:700,color:G,marginTop:2}}>{d.v}</div></div>))}</div>
 {ev.mapUrl&&<a href={ev.mapUrl} target="_blank" rel="noopener noreferrer" style={{display:"inline-flex",alignItems:"center",gap:6,background:"#e3f2fd",color:"#1565c0",padding:"8px 16px",borderRadius:10,fontSize:13,fontWeight:700,textDecoration:"none",fontFamily:ff,marginBottom:14}}>📍 Haritada Göster & Yol Tarifi Al</a>}
+<TamGorselKutulari gorseller={ev.images} baslik={ev.title}/>
 <p style={{fontFamily:ff,fontSize:13,color:"#555",lineHeight:1.7,marginBottom:14,whiteSpace:"pre-line"}}>{ev.fullDesc||ev.shortDesc}</p>
 {ytId&&<div style={{marginBottom:14,borderRadius:10,overflow:"hidden",aspectRatio:"16/9"}}><iframe src={`https://www.youtube.com/embed/${ytId}`} style={{width:"100%",height:"100%",border:"none"}} allowFullScreen/></div>}
 {!etkinlikBitti(ev)&&<div style={{marginBottom:14,padding:"10px 14px",background:"#fff8e1",borderRadius:8,border:"1px solid #ffe082"}}><div style={{fontFamily:ff,fontSize:12,color:"#666"}}>{rc}/{ev.capacity} kişi katılıyor — <strong>{ev.capacity-rc>0?`${ev.capacity-rc} yer kaldı`:"Kontenjan dolu"}</strong></div></div>}
@@ -589,14 +600,14 @@ return(<div style={crd}><h3 style={{fontFamily:ffT,color:G,margin:"0 0 16px",fon
 <div><label style={lbl}>Detaylı Açıklama</label><textarea style={{...inp(false),minHeight:100,resize:"vertical"}} value={fm.fullDesc} onChange={e=>f("fullDesc",e.target.value)}/></div>
 {/* Instagram Reels kararı: her etkinlik için ayrı */}
 <InstagramPaylasimAyari deger={fm.instagram} degistir={v=>f("instagram",v)} kayitliMi={!!event}/>
-<ImageUploader images={fm.images} setImages={setImages}/>
+<ImageUploader images={fm.images} setImages={setImages} kapakAyar={fm.kapakAyar||null} setKapakAyar={v=>setFm(prev=>({...prev,kapakAyar:v}))}/>
 <div><label style={lbl}>🎬 YouTube</label><input style={inp(false)} value={fm.youtubeUrl} onChange={e=>f("youtubeUrl",e.target.value)} placeholder="https://youtube.com/watch?v=..."/>{ytId&&<div style={{marginTop:8,borderRadius:8,overflow:"hidden",aspectRatio:"16/9",maxWidth:300}}><iframe src={`https://www.youtube.com/embed/${ytId}`} style={{width:"100%",height:"100%",border:"none"}} allowFullScreen/></div>}</div>
 <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}><button onClick={onCancel} style={btnS}>İptal</button><button onClick={save} style={btnP}>{event?"💾 Güncelle":"🌿 Oluştur"}</button></div></div></div>)}
 
 function EvMgr({events,setEvents}){const[ed,setEd]=useState(null);const save=async(ev)=>{const docId=ev._docId||ev.id;await fsSave("etkinlikler",docId,ev);if(ed==="new")setEvents([...events,{...ev,_docId:docId}]);else setEvents(events.map(e=>e.id===ev.id?{...ev,_docId:docId}:e));setEd(null)};const del=async(ev)=>{if(confirm("Silmek istediğinize emin misiniz?")){const docId=ev._docId||ev.id;await fsDelete("etkinlikler",docId);setEvents(events.filter(e=>e.id!==ev.id))}};
 if(ed)return<EvForm event={ed==="new"?null:ed} onSave={save} onCancel={()=>setEd(null)}/>;
 return(<div><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}><h2 style={{fontFamily:ffT,color:"#14213d",margin:0,fontSize:24}}>📅 Etkinlikler</h2><button onClick={()=>setEd("new")} style={btnP}>+ Yeni</button></div>
-{events.map(ev=>{const tp=TL[ev.type]||TL.gezi;const st=SM[ev.status];const aud=ev.audience||"bircicekli";return(<div key={ev.id} style={{...crd,display:"flex",alignItems:"center",gap:14}}><img src={ev.images?.[0]||"https://via.placeholder.com/70"} alt="" style={{width:60,height:60,borderRadius:10,objectFit:"cover",flexShrink:0}}/><div style={{flex:1,minWidth:0}}><div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4,flexWrap:"wrap"}}><span style={{fontFamily:ffT,fontWeight:800,fontSize:14,color:"#14213d"}}>{ev.title}</span><span style={{background:tp.bg,color:tp.color,padding:"2px 8px",borderRadius:10,fontSize:10,fontWeight:700,fontFamily:ff}}>{tp.label}</span>
+{events.map(ev=>{const tp=TL[ev.type]||TL.gezi;const st=SM[ev.status];const aud=ev.audience||"bircicekli";return(<div key={ev.id} style={{...crd,display:"flex",alignItems:"center",gap:14}}><div style={{width:60,height:60,borderRadius:10,overflow:"hidden",flexShrink:0,background:"#e9e4d8"}}>{ev.images?.[0]&&<KapakResmi src={ev.images[0]} ayar={ev.kapakAyar}/>}</div><div style={{flex:1,minWidth:0}}><div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4,flexWrap:"wrap"}}><span style={{fontFamily:ffT,fontWeight:800,fontSize:14,color:"#14213d"}}>{ev.title}</span><span style={{background:tp.bg,color:tp.color,padding:"2px 8px",borderRadius:10,fontSize:10,fontWeight:700,fontFamily:ff}}>{tp.label}</span>
 {/* 🆕 Audience rozeti */}
 <KatilimciRozeti ev={ev} kucuk/><InstagramRozeti ev={ev}/>
 <span style={{background:aud==="public"?"#fef3c7":"#e8f5e9",color:aud==="public"?"#78350f":"#1b2d55",padding:"2px 8px",borderRadius:10,fontSize:10,fontWeight:700,fontFamily:ff}}>{aud==="public"?"🌍 Herkese":"🌷 Bir Çiçek"}</span>
