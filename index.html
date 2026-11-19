@@ -14,6 +14,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
 <script src="kvkk-izinleri.js"></script>
 <script src="etkinlik-turleri.js"></script>
+<link rel="stylesheet" href="zeki-notu.css">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}body{font-family:'DM Sans',sans-serif}
 ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-thumb{background:#2c4a86;border-radius:3px}
@@ -352,6 +353,32 @@ return(<div style={{background:"#fff",borderRadius:16,overflow:"hidden",boxShado
 <div style={{display:"flex",gap:6}}><button onClick={()=>onReg(ev)} disabled={rc>=ev.capacity} style={{...btnP,flex:1,padding:"9px 0",fontSize:12,opacity:rc>=ev.capacity?0.5:1,cursor:rc>=ev.capacity?"not-allowed":"pointer"}}>{rc>=ev.capacity?"❌ Kontenjan Doldu":"🌿 Katıl"}</button><button onClick={()=>onDet(ev)} style={{...btnS,padding:"9px 14px",fontSize:12}}>Detay</button></div></div></div>)}
 
 /* ═══ DETAIL MODAL ═══ */
+const zekiPozlari = {
+  ogretmen: "Öğretmen önlüğü ve gözlük",
+  orman: "Orman yağmurluğu ve büyüteç",
+  kitap: "Kitap ve okuma hırkası"
+};
+
+function zekiPozu(ev) {
+  if (Object.hasOwn(zekiPozlari, ev.zekiPoz)) return ev.zekiPoz;
+  const baslik = (ev.title || "").toLocaleLowerCase("tr");
+  if (/kitap|masal|okuma/.test(baslik)) return "kitap";
+  if (/orman|palamut|meşe|doğa|kampı/.test(baslik)) return "orman";
+  return "ogretmen";
+}
+
+function ZekiNotu({ev}) {
+  const not = (ev.ogretmenNotu || "").trim();
+  const metin = not || ev.fullDesc || ev.shortDesc;
+  if (!metin) return null;
+  const poz = zekiPozu(ev);
+  return <aside className="zeki-note" data-pose={poz}>
+    <img src={`assets/zeki/${poz}.webp`} alt={`Zeki · ${zekiPozlari[poz]}`}/>
+    <h3>{not ? "Öğretmenimizden bir not" : "Etkinlik hakkında"}</h3>
+    <p>{metin}</p>
+  </aside>;
+}
+
 function DetModal({ev,regs,onClose,onReg,onYorum}){
 const evRegs=regs.filter(r=>r.eventId===ev.id);
 // 🆕 filledSpots önce, sonra hesaplama
@@ -386,7 +413,8 @@ return(<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",displa
 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14,fontFamily:ff,fontSize:12}}>{[{l:"TARİH & SAAT",v:`${fmtDate(ev.date)} • ${ev.startTime}${ev.endTime?"–"+ev.endTime:""}`},{l:"KONUM",v:ev.location},{l:"YAŞ GRUBU",v:ev.ageRange},{l:"ÜCRET",v:ev.isFree?"Ücretsiz":`₺${ev.fee}`}].map((d,i)=>(<div key={i} style={{background:"#f2f4f9",padding:"8px 12px",borderRadius:8}}><div style={{fontSize:10,color:"#888",fontWeight:700}}>{d.l}</div><div style={{fontWeight:700,color:G,marginTop:2}}>{d.v}</div></div>))}</div>
 {ev.mapUrl&&<a href={ev.mapUrl} target="_blank" rel="noopener noreferrer" style={{display:"inline-flex",alignItems:"center",gap:6,background:"#e3f2fd",color:"#1565c0",padding:"8px 16px",borderRadius:10,fontSize:13,fontWeight:700,textDecoration:"none",fontFamily:ff,marginBottom:14}}>📍 Haritada Göster & Yol Tarifi Al</a>}
 <TamGorselKutulari gorseller={ev.images} baslik={ev.title}/>
-<p style={{fontFamily:ff,fontSize:13,color:"#555",lineHeight:1.7,marginBottom:14,whiteSpace:"pre-line"}}>{ev.fullDesc||ev.shortDesc}</p>
+{ev.ogretmenNotu?.trim() && (ev.fullDesc || ev.shortDesc) && <p style={{fontFamily:ff,fontSize:13,color:"#555",lineHeight:1.7,marginBottom:14,whiteSpace:"pre-line"}}>{ev.fullDesc||ev.shortDesc}</p>}
+<ZekiNotu ev={ev}/>
 {ytId&&<div style={{marginBottom:14,borderRadius:10,overflow:"hidden",aspectRatio:"16/9"}}><iframe src={`https://www.youtube.com/embed/${ytId}`} style={{width:"100%",height:"100%",border:"none"}} allowFullScreen/></div>}
 {!etkinlikBitti(ev)&&<div style={{marginBottom:14,padding:"10px 14px",background:"#fff8e1",borderRadius:8,border:"1px solid #ffe082"}}><div style={{fontFamily:ff,fontSize:12,color:"#666"}}>{rc}/{ev.capacity} kişi katılıyor — <strong>{ev.capacity-rc>0?`${ev.capacity-rc} yer kaldı`:"Kontenjan dolu"}</strong></div></div>}
 {etkinlikBitti(ev)&&<OnayliYorumlar ev={ev}/>}
@@ -598,6 +626,18 @@ return(<div style={crd}><h3 style={{fontFamily:ffT,color:G,margin:"0 0 16px",fon
 <div style={{background:"#f8f9fc",borderRadius:10,padding:14,border:"1px solid #dde3ef"}}><label style={lbl}>💰 Ücret</label><div style={{display:"flex",alignItems:"center",gap:14,marginTop:6}}><label style={{display:"flex",alignItems:"center",gap:6,fontFamily:ff,fontSize:13,cursor:"pointer"}}><input type="radio" checked={fm.isFree} onChange={()=>f("isFree",true)} style={{accentColor:G}}/> Ücretsiz</label><label style={{display:"flex",alignItems:"center",gap:6,fontFamily:ff,fontSize:13,cursor:"pointer"}}><input type="radio" checked={!fm.isFree} onChange={()=>f("isFree",false)} style={{accentColor:G}}/> Ücretli</label>{!fm.isFree&&<div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontFamily:ff,fontWeight:700,color:"#888"}}>₺</span><input type="number" style={{...inp(false),width:100}} value={fm.fee} onChange={e=>f("fee",+e.target.value)}/></div>}</div></div>
 <div><label style={lbl}>Kısa Açıklama</label><textarea style={{...inp(false),minHeight:60,resize:"vertical"}} value={fm.shortDesc} onChange={e=>f("shortDesc",e.target.value)}/></div>
 <div><label style={lbl}>Detaylı Açıklama</label><textarea style={{...inp(false),minHeight:100,resize:"vertical"}} value={fm.fullDesc} onChange={e=>f("fullDesc",e.target.value)}/></div>
+<div>
+  <label htmlFor="ogretmen-notu" style={lbl}>Öğretmenimizden bir not</label>
+  <textarea id="ogretmen-notu" style={{...inp(false),minHeight:75}} value={fm.ogretmenNotu || ""} onChange={e=>f("ogretmenNotu",e.target.value)} placeholder="Aileye bu etkinlikten küçük bir an anlatın."/>
+</div>
+<div>
+  <label htmlFor="zeki-pozu" style={lbl}>Zeki’nin görünümü</label>
+  <select id="zeki-pozu" style={inp(false)} value={fm.zekiPoz || ""} onChange={e=>f("zekiPoz",e.target.value)}>
+    <option value="">Etkinlik başlığına göre seç</option>
+    {Object.entries(zekiPozlari).map(([poz,ad])=><option key={poz} value={poz}>{ad}</option>)}
+  </select>
+  <ZekiNotu ev={fm}/>
+</div>
 {/* Instagram Reels kararı: her etkinlik için ayrı */}
 <InstagramPaylasimAyari deger={fm.instagram} degistir={v=>f("instagram",v)} kayitliMi={!!event}/>
 <ImageUploader images={fm.images} setImages={setImages} kapakAyar={fm.kapakAyar||null} setKapakAyar={v=>setFm(prev=>({...prev,kapakAyar:v}))}/>

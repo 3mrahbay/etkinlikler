@@ -1,0 +1,18 @@
+.zeki-note {
+  --paper: #fff8e9;
+  --ink: #544023;
+  --accent: #b58743;
+  display: flow-root;
+  color: var(--ink);
+  background: var(--paper);
+  padding: 18px;
+  border: 1px solid color-mix(in srgb, var(--accent) 36%, white);
+  border-radius: 16px;
+  margin: 16px 0;
+  font-family: "DM Sans", system-ui, sans-serif;
+}
+.zeki-note[data-pose="orman"] { --paper: #eff7ef; --ink: #234831; --accent: #588468; }
+.zeki-note[data-pose="kitap"] { --paper: #fdf1ef; --ink: #653b3a; --accent: #bb7473; }
+.zeki-note img { float: left; width: clamp(62px, 18%, 106px); height: auto; margin: 0 16px 6px 0; }
+.zeki-note h3 { font: 700 1.25rem/1.24 "Fraunces", Georgia, serif; color: var(--ink); margin: 5px 0 9px; }
+.zeki-note p { font-size: 1rem; line-height: 1.55; white-space: pre-line; overflow-wrap: anywhere; margin: 0; }
