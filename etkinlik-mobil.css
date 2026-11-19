@@ -1,0 +1,45 @@
+.etkinlik-mobil-menu { display: none; }
+
+@media (max-width: 700px) {
+  .etkinlik-baslik { position: relative; z-index: 3; }
+  .etkinlik-ust-satir { flex-wrap: nowrap !important; padding: 6px 14px !important; }
+  .etkinlik-ust-satir > a { min-width: 0; }
+  .etkinlik-masaustu-hesap { display: none !important; }
+  .etkinlik-mobil-menu { display: block; position: relative; color: white; }
+  .etkinlik-mobil-menu summary {
+    display: flex; align-items: center; justify-content: center; gap: 7px;
+    cursor: pointer; min-height: 44px; padding-inline: 10px; font-weight: 700;
+    font-size: 14px; list-style: none;
+  }
+  .etkinlik-mobil-menu summary::-webkit-details-marker { display: none; }
+  .etkinlik-mobil-menu summary::before {
+    content: ""; width: 14px; height: 10px;
+    border-block: 2px solid; background: linear-gradient(currentColor,currentColor) center / 100% 2px no-repeat;
+  }
+  .etkinlik-mobil-menu nav {
+    position: absolute; right: 0; top: 100%; width: 180px; padding: 6px;
+    background: white; color: #14213d; border: 1px solid #dce0e7; border-radius: 12px;
+    box-shadow: 0 8px 24px #14213d29;
+  }
+  .etkinlik-mobil-menu nav > * {
+    display: flex; align-items: center; width: 100%; min-height: 44px; padding: 8px 12px;
+    border: 0; background: transparent; color: inherit; font: inherit; font-size: 15px;
+    text-decoration: none; text-align: left; cursor: pointer;
+  }
+  .etkinlik-acilis { padding-bottom: 16px !important; background: #f7f4ee !important; }
+  .etkinlik-acilis-icerik { display: grid !important; gap: 10px !important; padding: 14px 14px 0 !important; }
+  .etkinlik-tanitim > :not(h1) { display: none !important; }
+  .etkinlik-slogan {
+    font-size: 18px !important; line-height: 1.3 !important; color: #364966 !important;
+    font-weight: 600 !important; letter-spacing: normal !important;
+  }
+  .etkinlik-slogan br { display: none; }
+  .etkinlik-slogan span { color: inherit !important; background: none !important; }
+  .etkinlik-slogan span:not(:empty)::before { content: " "; }
+  .etkinlik-vurgu { max-width: none !important; min-width: 0; }
+  .siradaki > [aria-hidden] { display: none; }
+  .siradaki > div { box-shadow: 0 3px 12px #14213d12 !important; border-color: #dedbd3 !important; }
+  .siradaki-kapak { height: clamp(120px, 36vw, 190px) !important; }
+  .etkinlik-vurgu > :not(.siradaki) { background: #1b2d55 !important; }
+  #etkinlikler { margin-top: 0 !important; padding-inline: 14px !important; }
+}
