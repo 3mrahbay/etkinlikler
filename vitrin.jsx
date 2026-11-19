@@ -35,7 +35,7 @@ return(<button onClick={()=>onReg(ev)} disabled={dolu} style={{...btnP,flex:geni
 
 function OneCikanEtkinlik({ev,regs,onReg,onDet}){
 const rc=dolulukHesapla(ev,regs);const dolu=ev.capacity>0&&rc>=ev.capacity;const kalan=ev.capacity-rc;
-return(<div style={{position:"relative"}}>
+return(<div className="siradaki" style={{position:"relative"}}>
 {/* Süs şekilleri: altın halka, turuncu leke, noktalı desen, döndürülmüş kare */}
 <span aria-hidden="true" style={{position:"absolute",width:250,height:250,borderRadius:"50%",border:"3px solid rgba(241,210,127,0.55)",top:-46,right:-56}}/>
 <span aria-hidden="true" style={{position:"absolute",width:190,height:190,background:"radial-gradient(circle at 30% 30%,#f08a3c,#c2410c)",borderRadius:"42% 58% 63% 37% / 41% 44% 56% 59%",bottom:-34,left:-46,opacity:0.92}}/>
@@ -43,7 +43,7 @@ return(<div style={{position:"relative"}}>
 <span aria-hidden="true" style={{position:"absolute",width:36,height:36,border:"3px solid #e9c46a",borderRadius:8,transform:"rotate(22deg)",bottom:56,right:-24}}/>
 <span aria-hidden="true" style={{position:"absolute",width:14,height:14,borderRadius:"50%",background:"#e9c46a",top:-14,left:90}}/>
 <div style={{position:"relative",zIndex:1,background:"#fff",borderRadius:24,overflow:"hidden",boxShadow:"0 24px 60px rgba(5,10,25,0.45)",border:"1px solid rgba(241,210,127,0.7)",display:"flex",flexDirection:"column"}}>
-<div style={{position:"relative",height:190,background:"#e9e4d8"}}>
+<div className="siradaki-kapak" style={{position:"relative",height:190,background:"#e9e4d8"}}>
 <KapakGorseli ev={ev}/>
 <span style={{position:"absolute",top:12,left:12,background:ALTIN,color:"#14213d",boxShadow:"0 2px 8px rgba(0,0,0,0.18)",fontFamily:ff,fontWeight:800,fontSize:11,letterSpacing:1,padding:"5px 10px",borderRadius:8}}>SIRADAKİ ETKİNLİK</span>
 </div>
@@ -119,25 +119,33 @@ const kap={maxWidth:1120,margin:"0 auto",padding:"0 20px"};
 return(<div style={{minHeight:"100vh",background:"#f7f4ee",fontFamily:ff,color:"#14213d"}}>
 
 {/* Üst çubuk */}
-<header style={{background:"#0e1a33",borderBottom:"2px solid rgba(217,172,76,0.55)"}}>
-<div style={{...kap,display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,padding:"10px 20px",flexWrap:"wrap"}}>
+<header className="etkinlik-baslik" style={{background:"#0e1a33",borderBottom:"2px solid rgba(217,172,76,0.55)"}}>
+<div className="etkinlik-ust-satir" style={{...kap,display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,padding:"10px 20px",flexWrap:"wrap"}}>
 <a href="/" style={{display:"flex",alignItems:"center",gap:10,textDecoration:"none"}}>
 <img src={LOGO} alt="" style={{width:38,height:38,borderRadius:"50%",border:"2px solid rgba(255,255,255,0.25)"}}/>
 <span style={{display:"flex",flexDirection:"column",lineHeight:1.15}}><span style={{fontFamily:ffT,fontWeight:700,fontSize:17,color:"#fff"}}>Bir Çiçek Etkinlikleri</span><span style={{fontSize:11,color:"rgba(255,255,255,0.65)",fontWeight:600}}>Bir Çiçek Koleji Anaokulu · Tuzla</span></span>
 </a>
-{user?(<div style={{display:"flex",alignItems:"center",gap:8}}>
+<details className="etkinlik-mobil-menu">
+<summary>Menü</summary>
+<nav aria-label="Etkinlik menüsü" onClick={e=>{if(e.target.closest("a,button"))e.currentTarget.parentElement.open=false}}>
+<a href="#etkinlikler">Etkinlik takvimi</a>
+<a href="#bulten">Etkinlik bülteni</a>
+{user?<><button onClick={onProfile}>Profilim</button><button onClick={onLogout}>Çıkış</button></>:<button onClick={onLogin}>Google ile giriş</button>}
+</nav>
+</details>
+{user?(<div className="etkinlik-masaustu-hesap" style={{display:"flex",alignItems:"center",gap:8}}>
 <button onClick={onProfile} style={{display:"flex",alignItems:"center",gap:8,background:"rgba(255,255,255,0.12)",border:"none",borderRadius:999,padding:"5px 12px 5px 5px",color:"#fff",cursor:"pointer",fontFamily:ff,fontWeight:700,fontSize:13}}><img src={user.photoURL||LOGO} alt="" style={{width:28,height:28,borderRadius:"50%"}}/>Profilim</button>
 <button onClick={onLogout} style={{background:"transparent",border:"none",color:"rgba(255,255,255,0.7)",cursor:"pointer",fontFamily:ff,fontWeight:600,fontSize:13,padding:8}}>Çıkış</button>
-</div>):(<button onClick={onLogin} style={{background:"#fff",border:"none",borderRadius:999,padding:"9px 16px",color:G,fontFamily:ff,fontWeight:800,fontSize:13,cursor:"pointer"}}>Google ile giriş</button>)}
+</div>):(<button className="etkinlik-masaustu-hesap" onClick={onLogin} style={{background:"#fff",border:"none",borderRadius:999,padding:"9px 16px",color:G,fontFamily:ff,fontWeight:800,fontSize:13,cursor:"pointer"}}>Google ile giriş</button>)}
 </div>
 </header>
 
 {/* Açılış */}
-<section style={{background:"radial-gradient(700px 420px at 88% 8%, rgba(226,105,31,0.35) 0%, transparent 65%), radial-gradient(900px 500px at 0% 100%, rgba(217,172,76,0.18) 0%, transparent 60%), linear-gradient(160deg,#0e1a33 0%,#1b2d55 55%,#243b6e 100%)",paddingBottom:80,overflow:"hidden"}}>
-<div style={{...kap,display:"flex",flexWrap:"wrap",gap:36,alignItems:"center",paddingTop:44}}>
-<div style={{flex:"999 1 420px",minWidth:0,display:"flex",flexDirection:"column",gap:16}}>
+<section className="etkinlik-acilis" style={{background:"radial-gradient(700px 420px at 88% 8%, rgba(226,105,31,0.35) 0%, transparent 65%), radial-gradient(900px 500px at 0% 100%, rgba(217,172,76,0.18) 0%, transparent 60%), linear-gradient(160deg,#0e1a33 0%,#1b2d55 55%,#243b6e 100%)",paddingBottom:80,overflow:"hidden"}}>
+<div className="etkinlik-acilis-icerik" style={{...kap,display:"flex",flexWrap:"wrap",gap:36,alignItems:"center",paddingTop:44}}>
+<div className="etkinlik-tanitim" style={{flex:"999 1 420px",minWidth:0,display:"flex",flexDirection:"column",gap:16}}>
 <span style={{alignSelf:"flex-start",background:"rgba(241,210,127,0.1)",border:"1px solid rgba(241,210,127,0.5)",color:"#f1d27f",padding:"6px 14px",borderRadius:999,fontSize:12,fontWeight:800,letterSpacing:1.8}}>{S.badge}</span>
-<h1 style={{margin:0,fontFamily:"'Fraunces', Georgia, serif",fontWeight:700,color:"#fff",fontSize:"clamp(38px,5.6vw,62px)",lineHeight:1.04,letterSpacing:-0.5}}>{S.titleLine1}<br/><span style={{background:ALTIN,WebkitBackgroundClip:"text",backgroundClip:"text",color:"transparent"}}>{S.titleLine2}</span></h1>
+<h1 className="etkinlik-slogan" style={{margin:0,fontFamily:"'Fraunces', Georgia, serif",fontWeight:700,color:"#fff",fontSize:"clamp(38px,5.6vw,62px)",lineHeight:1.04,letterSpacing:-0.5}}>{S.titleLine1}<br/><span style={{background:ALTIN,WebkitBackgroundClip:"text",backgroundClip:"text",color:"transparent"}}>{S.titleLine2}</span></h1>
 <p style={{margin:0,color:"rgba(255,255,255,0.88)",fontSize:17,lineHeight:1.6,maxWidth:560}}>{S.subtitle}</p>
 <div style={{display:"flex",flexWrap:"wrap",gap:8}}>{[S.feat1,S.feat2,S.feat3].filter(Boolean).map((f,i)=><span key={i} style={{background:"rgba(255,255,255,0.07)",border:"1px solid rgba(241,210,127,0.3)",color:"#fff",padding:"7px 12px",borderRadius:10,fontSize:13,fontWeight:700}}>{f}</span>)}</div>
 <div style={{display:"flex",gap:10,flexWrap:"wrap",marginTop:4}}>
@@ -145,7 +153,7 @@ return(<div style={{minHeight:"100vh",background:"#f7f4ee",fontFamily:ff,color:"
 <a href="#bulten" style={{color:"#f1d27f",textDecoration:"none",fontWeight:700,fontSize:15,padding:"13px 6px"}}>Yeni etkinliklerden haberdar ol →</a>
 </div>
 </div>
-<div style={{flex:"1 1 340px",minWidth:0,maxWidth:440}}>
+<div className="etkinlik-vurgu" style={{flex:"1 1 340px",minWidth:0,maxWidth:440}}>
 {oneCikan?<OneCikanEtkinlik ev={oneCikan} regs={regs} onReg={onReg} onDet={onDet}/>:
 <div style={{background:"rgba(255,255,255,0.1)",borderRadius:24,padding:28,color:"#fff"}}><div style={{fontFamily:ffT,fontWeight:700,fontSize:22,marginBottom:8}}>Yeni etkinlikler hazırlanıyor</div><div style={{fontSize:15,opacity:0.85,lineHeight:1.6}}>Takvime yeni bir etkinlik eklendiğinde ilk siz haberdar olun.</div><a href="#bulten" style={{display:"inline-block",marginTop:14,background:"#fff",color:G,fontWeight:800,padding:"11px 16px",borderRadius:12,textDecoration:"none"}}>Bültene abone ol</a></div>}
 </div>
@@ -178,7 +186,7 @@ return(<div style={{minHeight:"100vh",background:"#f7f4ee",fontFamily:ff,color:"
 <section style={{...kap,padding:"28px 20px 12px"}}>
 <h2 style={{margin:"0 0 16px",fontFamily:ffT,fontWeight:700,fontSize:26}}>Yaklaşan etkinlikler</h2>
 {isVeli&&<div style={{background:"#e8edf7",color:"#1b2d55",borderRadius:14,padding:"10px 14px",fontFamily:ff,fontSize:13,fontWeight:600,marginBottom:16}}>Bir Çiçek Koleji velisi olarak okulumuza özel etkinliklere de kayıt olabilirsiniz.</div>}
-{liste.length?<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(290px,1fr))",gap:22}}>
+{liste.length?<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(100%, 290px),1fr))",gap:22}}>
 {liste.map(ev=><EtkinlikKarti key={ev.id} ev={ev} regs={regs} onReg={onReg} onDet={onDet}/>)}
 </div>:<div style={{background:"#fff",borderRadius:20,padding:"36px 20px",textAlign:"center",border:"1px dashed #d9d2c2"}}>
 <div style={{fontFamily:ffT,fontWeight:700,fontSize:20,marginBottom:6}}>Bu seçimde yaklaşan etkinlik yok</div>
