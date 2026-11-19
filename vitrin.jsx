@@ -98,6 +98,22 @@ return(<button onClick={onClick} style={{flex:"none",display:"inline-flex",align
 {renk&&<span aria-hidden="true" style={{width:9,height:9,borderRadius:"50%",background:renk,flex:"none"}}/>}{children}{typeof sayi==="number"&&<span style={{fontSize:11,fontWeight:800,background:aktif?"rgba(255,255,255,0.7)":"#f2efe8",borderRadius:99,padding:"1px 7px"}}>{sayi}</span>}
 </button>)}
 
+function KatilimDuyurusu(){
+  const [duraklatildi,setDuraklatildi]=React.useState(false);
+  const metin="Okul dışından aileler de “Herkese açık” etkinliklerimize katılabilir.";
+  const dugme=duraklatildi?"Duyuruyu kaydır":"Kayan duyuruyu duraklat";
+  return <aside className="katilim-duyurusu" data-sabit={duraklatildi} aria-label="Katılım duyurusu">
+    <div className="duyuru-penceresi">
+      <div className="duyuru-akisi">
+        <span>{metin}</span><span aria-hidden="true">{metin}</span>
+      </div>
+    </div>
+    <button type="button" onClick={()=>setDuraklatildi(!duraklatildi)} aria-label={dugme} title={dugme}>
+      <span aria-hidden="true">{duraklatildi?"▶":"Ⅱ"}</span>
+    </button>
+  </aside>;
+}
+
 function Vitrin({events,regs,S,user,isVeli,onLogin,onLogout,onProfile,onReg,onDet}){
 const[kimFiltre,setKimFiltre]=React.useState("hepsi");
 const[erisimFiltre,setErisimFiltre]=React.useState("hepsi");
@@ -143,6 +159,7 @@ return(<div style={{minHeight:"100vh",background:"#f7f4ee",fontFamily:ff,color:"
 {/* Açılış */}
 <section className="etkinlik-acilis" style={{background:"radial-gradient(700px 420px at 88% 8%, rgba(226,105,31,0.35) 0%, transparent 65%), radial-gradient(900px 500px at 0% 100%, rgba(217,172,76,0.18) 0%, transparent 60%), linear-gradient(160deg,#0e1a33 0%,#1b2d55 55%,#243b6e 100%)",paddingBottom:80,overflow:"hidden"}}>
 <div className="etkinlik-acilis-icerik" style={{...kap,display:"flex",flexWrap:"wrap",gap:36,alignItems:"center",paddingTop:44}}>
+<KatilimDuyurusu/>
 <div className="etkinlik-tanitim" style={{flex:"999 1 420px",minWidth:0,display:"flex",flexDirection:"column",gap:16}}>
 <span style={{alignSelf:"flex-start",background:"rgba(241,210,127,0.1)",border:"1px solid rgba(241,210,127,0.5)",color:"#f1d27f",padding:"6px 14px",borderRadius:999,fontSize:12,fontWeight:800,letterSpacing:1.8}}>{S.badge}</span>
 <h1 className="etkinlik-slogan" style={{margin:0,fontFamily:"'Fraunces', Georgia, serif",fontWeight:700,color:"#fff",fontSize:"clamp(38px,5.6vw,62px)",lineHeight:1.04,letterSpacing:-0.5}}>{S.titleLine1}<br/><span style={{background:ALTIN,WebkitBackgroundClip:"text",backgroundClip:"text",color:"transparent"}}>{S.titleLine2}</span></h1>
