@@ -33,7 +33,7 @@ return(<span style={{fontSize:11,fontWeight:700,color:renk,fontFamily:ff,whiteSp
 function KayitDugmesi({ev,dolu,onReg,genis}){
 return(<button onClick={()=>onReg(ev)} disabled={dolu} style={{...btnP,flex:genis?1:"none",padding:"12px 20px",fontSize:14,borderRadius:12,opacity:dolu?0.5:1,cursor:dolu?"not-allowed":"pointer"}}>{dolu?"Kontenjan doldu":"Kayıt ol"}</button>)}
 
-function OneCikanEtkinlik({ev,regs,onReg,onDet}){
+function OneCikanEtkinlik({ev,regs,onReg,onDet,siradaki}){
 const rc=dolulukHesapla(ev,regs);const dolu=ev.capacity>0&&rc>=ev.capacity;const kalan=ev.capacity-rc;
 return(<div className="siradaki" style={{position:"relative"}}>
 {/* Süs şekilleri: altın halka, turuncu leke, noktalı desen, döndürülmüş kare */}
@@ -45,7 +45,7 @@ return(<div className="siradaki" style={{position:"relative"}}>
 <div style={{position:"relative",zIndex:1,background:"#fff",borderRadius:24,overflow:"hidden",boxShadow:"0 24px 60px rgba(5,10,25,0.45)",border:"1px solid rgba(241,210,127,0.7)",display:"flex",flexDirection:"column"}}>
 <div className="siradaki-kapak" style={{position:"relative",height:190,background:"#e9e4d8"}}>
 <KapakGorseli ev={ev}/>
-<span style={{position:"absolute",top:12,left:12,background:ALTIN,color:"#14213d",boxShadow:"0 2px 8px rgba(0,0,0,0.18)",fontFamily:ff,fontWeight:800,fontSize:11,letterSpacing:1,padding:"5px 10px",borderRadius:8}}>SIRADAKİ ETKİNLİK</span>
+<span style={{position:"absolute",top:12,left:12,background:ALTIN,color:"#14213d",boxShadow:"0 2px 8px rgba(0,0,0,0.18)",fontFamily:ff,fontWeight:800,fontSize:11,letterSpacing:1,padding:"5px 10px",borderRadius:8}}>{siradaki?"SIRADAKİ ETKİNLİK":"YAKLAŞAN ETKİNLİK"}</span>
 </div>
 <div style={{padding:"18px 20px 20px",display:"flex",flexDirection:"column",gap:10}}>
 <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}><KatilimciRozeti ev={ev}/><ErisimRozeti ev={ev}/></div>
@@ -114,6 +114,105 @@ function KatilimDuyurusu(){
   </aside>;
 }
 
+const OKUL_TANITIM_URL="https://www.bircicekkoleji.com/hakkimizda";
+const OKUL_RANDEVU_URL="https://www.bircicekkoleji.com/okulu-ziyaret";
+
+function VitrinBasligi({user,onLogin,onLogout,onProfile}){
+  const menu=React.useRef(null);
+  const kapat=()=>menu.current.close();
+  const menuIslemi=(islem)=>()=>{
+    kapat();
+    islem();
+  };
+  return <header className="etkinlik-baslik">
+    <div className="etkinlik-ust-satir">
+      <button type="button" className="etkinlik-menu-ac" aria-haspopup="dialog" aria-controls="etkinlik-menu" onClick={()=>menu.current.showModal()}>
+        <span className="etkinlik-menu-simge" aria-hidden="true"/> Menü
+      </button>
+      <a href="/" className="etkinlik-marka">
+        <img src={LOGO} alt=""/>
+        <span>Bir Çiçek Etkinlikleri</span>
+      </a>
+      <button type="button" className="etkinlik-hesap" aria-label={user?"Profilim":"Google ile giriş yap"} onClick={user?onProfile:onLogin}>
+        {user?<img src={user.photoURL||LOGO} alt=""/>:<span className="etkinlik-hesap-simge" aria-hidden="true"/>}
+        <span className="etkinlik-hesap-metin">{user?"Profilim":"Giriş Yap"}</span>
+      </button>
+    </div>
+    <dialog id="etkinlik-menu" ref={menu} className="etkinlik-menu-panel" aria-labelledby="etkinlik-menu-baslik" onClick={e=>{if(e.target===e.currentTarget)kapat()}}>
+      <div className="etkinlik-menu-panel-icerik">
+        <div className="etkinlik-menu-ust">
+          <h2 id="etkinlik-menu-baslik">Menü</h2>
+          <button type="button" onClick={kapat} aria-label="Menüyü kapat" autoFocus>×</button>
+        </div>
+        <nav aria-label="Etkinlik menüsü">
+          <a href="#etkinlikler" onClick={kapat}>Etkinlik takvimi</a>
+          <a href="#bulten" onClick={kapat}>Etkinlik bülteni</a>
+          {user?<><button type="button" onClick={menuIslemi(onProfile)}>Profilim</button><button type="button" onClick={menuIslemi(onLogout)}>Çıkış</button></>:<button type="button" onClick={menuIslemi(onLogin)}>Google ile giriş</button>}
+          <div className="etkinlik-menu-okul">
+            <a href={OKUL_TANITIM_URL} onClick={kapat}>Okulumuzu Tanıyın</a>
+            <a href={OKUL_RANDEVU_URL} onClick={kapat}>Okul Randevusu Alın</a>
+          </div>
+        </nav>
+      </div>
+    </dialog>
+  </header>;
+}
+
+function VitrinSlaytlari({etkinlikler,regs,onReg,onDet}){
+  const [secili,setSecili]=React.useState(null);
+  const dokunus=React.useRef(null);
+  const slaytlar=etkinlikler.slice(0,3).map((ev,index)=>({id:"etkinlik-"+ev.id,bilgi:ev.title,ev,index}));
+  slaytlar.push({id:"okul",bilgi:"Bir Çiçek Koleji Anaokulu"});
+  const bulunan=slaytlar.findIndex(slayt=>slayt.id===secili);
+  const index=bulunan<0?0:bulunan;
+  const slayt=slaytlar[index];
+  const coklu=slaytlar.length>1;
+  const ilerle=(yon)=>setSecili(slaytlar[(index+yon+slaytlar.length)%slaytlar.length].id);
+
+  return <section className="etkinlik-slaytlar" aria-label="Öne çıkan etkinlikler ve duyurular" onKeyDown={e=>{
+    if(!coklu||!["ArrowLeft","ArrowRight"].includes(e.key))return;
+    e.preventDefault();
+    ilerle(e.key==="ArrowLeft"?-1:1);
+  }}>
+    <div className="etkinlik-slayt-pencere"
+      onTouchStart={e=>{
+        const t=e.touches[0];
+        dokunus.current=e.touches.length===1?{x:t.clientX,y:t.clientY}:null;
+      }}
+      onTouchCancel={()=>{dokunus.current=null}}
+      onTouchEnd={e=>{
+        const baslangic=dokunus.current;
+        dokunus.current=null;
+        if(!coklu||!baslangic)return;
+        const t=e.changedTouches[0];
+        const x=t.clientX-baslangic.x;
+        const y=t.clientY-baslangic.y;
+        if(Math.abs(x)>48&&Math.abs(x)>Math.abs(y)*1.4)ilerle(x<0?1:-1);
+      }}>
+      {slayt.ev?<OneCikanEtkinlik key={slayt.id} ev={slayt.ev} regs={regs} onReg={onReg} onDet={onDet} siradaki={slayt.index===0}/>:
+        <article className="etkinlik-okul-tanitimi">
+          <div className="etkinlik-okul-gorseli">
+            <span>Bir Çiçek Koleji<br/>Anaokulu</span>
+            <img src="assets/zeki/ogretmen.webp" alt="" width="180" height="180"/>
+          </div>
+          <div className="etkinlik-okul-icerik">
+            <h2>Bir Çiçek’i keşfedin</h2>
+            <p>Tuzla Aydınlı’da Montessori ve Orman Okulu yaklaşımımızla tanışın.</p>
+            <a href={OKUL_TANITIM_URL}>Okulumuzu Tanıyın</a>
+          </div>
+        </article>}
+      {coklu&&<>
+        <button type="button" className="etkinlik-slayt-once" onClick={()=>ilerle(-1)} aria-label="Önceki duyuru"><span aria-hidden="true">‹</span></button>
+        <button type="button" className="etkinlik-slayt-sonra" onClick={()=>ilerle(1)} aria-label="Sonraki duyuru"><span aria-hidden="true">›</span></button>
+      </>}
+    </div>
+    {coklu&&<div className="etkinlik-slayt-noktalar" role="group" aria-label="Gösterilecek duyuruyu seçin">
+      {slaytlar.map((oge,i)=><button key={oge.id} type="button" aria-label={oge.bilgi} aria-current={i===index?"true":undefined} onClick={()=>setSecili(oge.id)}><span aria-hidden="true"/></button>)}
+    </div>}
+    {coklu&&<p className="etkinlik-ekran-okuyucu" aria-live="polite">{index+1} / {slaytlar.length} · {slayt.bilgi}</p>}
+  </section>;
+}
+
 function Vitrin({events,regs,S,user,isVeli,onLogin,onLogout,onProfile,onReg,onDet}){
 const[kimFiltre,setKimFiltre]=React.useState("hepsi");
 const[erisimFiltre,setErisimFiltre]=React.useState("hepsi");
@@ -122,7 +221,6 @@ const[gecmisAcik,setGecmisAcik]=React.useState(false);
 
 const yaklasan=events.filter(e=>!etkinlikBitti(e)).sort((a,b)=>(a.date+a.startTime).localeCompare(b.date+b.startTime));
 const gecmis=events.filter(etkinlikBitti).sort((a,b)=>(b.date+b.startTime).localeCompare(a.date+a.startTime));
-const oneCikan=yaklasan[0];
 
 const kimSayilari={};yaklasan.forEach(e=>{const k=katilimciTuruAl(e);kimSayilari[k]=(kimSayilari[k]||0)+1});
 let liste=yaklasan;
@@ -134,27 +232,7 @@ const kap={maxWidth:1120,margin:"0 auto",padding:"0 20px"};
 
 return(<div style={{minHeight:"100vh",background:"#f7f4ee",fontFamily:ff,color:"#14213d"}}>
 
-{/* Üst çubuk */}
-<header className="etkinlik-baslik" style={{background:"#0e1a33",borderBottom:"2px solid rgba(217,172,76,0.55)"}}>
-<div className="etkinlik-ust-satir" style={{...kap,display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,padding:"10px 20px",flexWrap:"wrap"}}>
-<a href="/" style={{display:"flex",alignItems:"center",gap:10,textDecoration:"none"}}>
-<img src={LOGO} alt="" style={{width:38,height:38,borderRadius:"50%",border:"2px solid rgba(255,255,255,0.25)"}}/>
-<span style={{display:"flex",flexDirection:"column",lineHeight:1.15}}><span style={{fontFamily:ffT,fontWeight:700,fontSize:17,color:"#fff"}}>Bir Çiçek Etkinlikleri</span><span style={{fontSize:11,color:"rgba(255,255,255,0.65)",fontWeight:600}}>Bir Çiçek Koleji Anaokulu · Tuzla</span></span>
-</a>
-<details className="etkinlik-mobil-menu">
-<summary>Menü</summary>
-<nav aria-label="Etkinlik menüsü" onClick={e=>{if(e.target.closest("a,button"))e.currentTarget.parentElement.open=false}}>
-<a href="#etkinlikler">Etkinlik takvimi</a>
-<a href="#bulten">Etkinlik bülteni</a>
-{user?<><button onClick={onProfile}>Profilim</button><button onClick={onLogout}>Çıkış</button></>:<button onClick={onLogin}>Google ile giriş</button>}
-</nav>
-</details>
-{user?(<div className="etkinlik-masaustu-hesap" style={{display:"flex",alignItems:"center",gap:8}}>
-<button onClick={onProfile} style={{display:"flex",alignItems:"center",gap:8,background:"rgba(255,255,255,0.12)",border:"none",borderRadius:999,padding:"5px 12px 5px 5px",color:"#fff",cursor:"pointer",fontFamily:ff,fontWeight:700,fontSize:13}}><img src={user.photoURL||LOGO} alt="" style={{width:28,height:28,borderRadius:"50%"}}/>Profilim</button>
-<button onClick={onLogout} style={{background:"transparent",border:"none",color:"rgba(255,255,255,0.7)",cursor:"pointer",fontFamily:ff,fontWeight:600,fontSize:13,padding:8}}>Çıkış</button>
-</div>):(<button className="etkinlik-masaustu-hesap" onClick={onLogin} style={{background:"#fff",border:"none",borderRadius:999,padding:"9px 16px",color:G,fontFamily:ff,fontWeight:800,fontSize:13,cursor:"pointer"}}>Google ile giriş</button>)}
-</div>
-</header>
+<VitrinBasligi user={user} onLogin={onLogin} onLogout={onLogout} onProfile={onProfile}/>
 
 {/* Açılış */}
 <section className="etkinlik-acilis" style={{background:"radial-gradient(700px 420px at 88% 8%, rgba(226,105,31,0.35) 0%, transparent 65%), radial-gradient(900px 500px at 0% 100%, rgba(217,172,76,0.18) 0%, transparent 60%), linear-gradient(160deg,#0e1a33 0%,#1b2d55 55%,#243b6e 100%)",paddingBottom:80,overflow:"hidden"}}>
@@ -171,8 +249,7 @@ return(<div style={{minHeight:"100vh",background:"#f7f4ee",fontFamily:ff,color:"
 </div>
 </div>
 <div className="etkinlik-vurgu" style={{flex:"1 1 340px",minWidth:0,maxWidth:440}}>
-{oneCikan?<OneCikanEtkinlik ev={oneCikan} regs={regs} onReg={onReg} onDet={onDet}/>:
-<div style={{background:"rgba(255,255,255,0.1)",borderRadius:24,padding:28,color:"#fff"}}><div style={{fontFamily:ffT,fontWeight:700,fontSize:22,marginBottom:8}}>Yeni etkinlikler hazırlanıyor</div><div style={{fontSize:15,opacity:0.85,lineHeight:1.6}}>Takvime yeni bir etkinlik eklendiğinde ilk siz haberdar olun.</div><a href="#bulten" style={{display:"inline-block",marginTop:14,background:"#fff",color:G,fontWeight:800,padding:"11px 16px",borderRadius:12,textDecoration:"none"}}>Bültene abone ol</a></div>}
+<VitrinSlaytlari etkinlikler={yaklasan} regs={regs} onReg={onReg} onDet={onDet}/>
 </div>
 </div>
 </section>
